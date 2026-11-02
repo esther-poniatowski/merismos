@@ -8,6 +8,7 @@ Commands
 info : Display diagnostic information.
 segment : Print the regions of a source as JSON.
 conform : Check a segmenter against a conformance file.
+observe : Write the Markdown cases as an observation vault for Obsidian.
 
 See Also
 --------
@@ -24,6 +25,7 @@ import typer
 from . import info, __version__
 from .conformance import check_case, load_cases
 from .errors import MerismosError
+from .observation import export_vault
 from .registry import default_registry
 from .serialization import region_to_data
 
@@ -88,6 +90,20 @@ def cli_conform(
     typer.echo(f"{len(cases) - len(mismatches)} of {len(cases)} cases conform")
     if mismatches:
         raise typer.Exit(1)
+
+
+@app.command("observe")
+def cli_observe(
+    cases_path: Path = typer.Argument(..., help="Conformance file of Markdown cases."),
+    folder: Path = typer.Argument(..., help="Folder of the observation vault to write."),
+) -> None:
+    """Write the Markdown cases as notes, with a checklist, to compare them in Obsidian."""
+    try:
+        checklist = export_vault(load_cases(cases_path), folder)
+    except (MerismosError, OSError) as error:
+        typer.echo(f"error: {error}", err=True)
+        raise typer.Exit(2) from error
+    typer.echo(f"open {folder} as a vault in Obsidian, then follow {checklist.name}")
 
 
 @app.callback()

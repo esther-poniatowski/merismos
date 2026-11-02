@@ -190,3 +190,18 @@ def test_pathological_sources_segment_quickly(text: str) -> None:
     started = time.perf_counter()
     segment(text, "markdown")
     assert time.perf_counter() - started < 2.0
+
+
+# --- observation in Obsidian --------------------------------------------------------------------
+
+
+def test_observation_vault_holds_each_case_text_verbatim(tmp_path: Path) -> None:
+    cases_file = Path(__file__).resolve().parent.parent / "specs" / "conformance" / "markdown.yml"
+    result = CliRunner().invoke(app, ["observe", str(cases_file), str(tmp_path / "vault")])
+    assert result.exit_code == 0
+    for case in load_cases(cases_file):
+        note = tmp_path / "vault" / "cases" / f"{case.identifier}.md"
+        assert note.read_bytes().decode("utf-8") == case.text
+    checklist = (tmp_path / "vault" / "_checklist.md").read_text(encoding="utf-8")
+    assert "- [ ] [[cases/inline-math-basic|inline-math-basic]]" in checklist
+    assert "inline-math: `x_i`" in checklist

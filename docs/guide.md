@@ -100,3 +100,20 @@ merismos conform specs/conformance/markdown.yml --syntax config/markdown-syntax.
 ```
 
 Each mismatch is reported as the first differing region of its case, and the last line gives the number of conforming cases.
+
+## Observing cases in Obsidian
+
+Merismos follows the reading of Obsidian, and a case becomes binding once it is observed there. The command `merismos observe` writes an observation vault: one note per Markdown case, holding exactly the text of the case, and a checklist stating the expected reading of each case:
+
+```console
+merismos observe specs/conformance/markdown.yml /tmp/merismos-observation
+```
+
+The observation then takes four steps:
+
+1. Open the folder as a vault in Obsidian, then open the note `_checklist.md`.
+2. Open each case from its link, in the reading view, and compare the rendering with the regions listed under the case: each formula, code span, heading, quotation, callout and link, with the text of its content.
+3. Tick a case when Obsidian renders every listed region and no other one; note the difference otherwise.
+4. Write the version of Obsidian, shown under Settings › General, in the field `observed` of each ticked case of the conformance file, and correct or report each case whose reading differs.
+
+A correction of an unobserved case keeps the version of the contract, as the [versioning rule](span-kinds.md#^versioning) states.
