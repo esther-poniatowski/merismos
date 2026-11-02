@@ -36,6 +36,8 @@ FRAGMENTS = (
     "[a`](b)`",
     "  ",
     "\t",
+    "$$\n+ b\n> c\n$$",
+    "\\`x`",
 )
 """Fragments joined into documents, chosen to cross every construct with every container."""
 
@@ -46,7 +48,7 @@ def _document(seed: int) -> str:
     for _ in range(generator.randint(1, 12)):
         line = "".join(generator.choice(FRAGMENTS) for _ in range(generator.randint(1, 5)))
         lines.append(line)
-    return generator.choice(("\n", "\r\n")).join(lines)
+    return generator.choice(("\n", "\r\n", "\r")).join(lines)
 
 
 @pytest.mark.parametrize("seed", range(400))
@@ -60,3 +62,22 @@ def test_segmentation_is_deterministic(seed: int) -> None:
     """Segmenting a source twice returns the same regions."""
     document = _document(seed)
     assert segment(document, "markdown") == segment(document, "markdown")
+
+
+DELIMITED_KINDS = {"inline-math": "$", "inline-code": "`"}
+"""Kinds whose content never holds an unescaped delimiter of their own width at its edges."""
+
+
+@pytest.mark.parametrize("seed", range(200))
+def test_contents_exclude_their_delimiters(seed: int) -> None:
+    """The content of a delimited region starts and ends inside its delimiters."""
+    document = _document(seed)
+    segmentation = segment(document, "markdown")
+    for region in segmentation.select(DELIMITED_KINDS):
+        assert region.content is not None
+        delimiter = DELIMITED_KINDS[region.kind]
+        assert (
+            document[region.range.start] == delimiter
+            and document[region.range.end - 1] == delimiter
+        )
+        assert region.range.start < region.content.start <= region.content.end < region.range.end

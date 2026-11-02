@@ -96,14 +96,27 @@ def test_null_section_disables_its_construct(tmp_path: Path) -> None:
 
 def test_custom_delimiter_needs_no_code(tmp_path: Path) -> None:
     path = _syntax_file(
-        tmp_path, {"math": {"display": None, "inline": "%%", "inline_spans_lines": False}}
+        tmp_path,
+        {
+            "math": {
+                "display": None,
+                "inline": "%%",
+                "inline_spans_lines": False,
+                "display_spans_blank_lines": False,
+            }
+        },
     )
     regions = default_registry().segmenter("markdown", path).segment("a %%x%% b")
     assert [(region.kind, region.range) for region in regions] == [("inline-math", Span(2, 7))]
 
 
 def test_inline_math_may_span_lines_when_the_syntax_says_so(tmp_path: Path) -> None:
-    math = {"display": "$$", "inline": "$", "inline_spans_lines": True}
+    math = {
+        "display": "$$",
+        "inline": "$",
+        "inline_spans_lines": True,
+        "display_spans_blank_lines": False,
+    }
     path = _syntax_file(tmp_path, {"math": math})
     regions = default_registry().segmenter("markdown", path).segment("$a\nb$")
     assert [region.kind for region in regions] == ["inline-math"]
@@ -190,6 +203,7 @@ def test_cli_segment_prints_one_region_per_line(tmp_path: Path) -> None:
 def test_cli_conform_fails_on_a_planted_mismatch(tmp_path: Path) -> None:
     cases = tmp_path / "cases.yml"
     cases.write_text(
+        "contract: merismos:span-kinds@1\n"
         "cases:\n- id: wrong\n  source: markdown\n  observed: null\n  text: '$x$'\n  regions: []\n",
         encoding="utf-8",
     )

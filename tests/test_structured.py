@@ -101,7 +101,8 @@ def test_yaml_syntax_selects_roles(tmp_path: Path) -> None:
     path = _syntax(
         tmp_path,
         "syntax_version: 1\nsource_type: yaml\nname: keys\n"
-        "mapping_values: false\nsequence_items: false\nmapping_keys: true\ncomments: false\n",
+        "mapping_values: false\nsequence_items: false\nmapping_keys: true\ncomments: false\n"
+        "comment_exclusions: []\n",
     )
     regions = default_registry().segmenter("yaml", path).segment("a: x # c\nb: [y]\n")
     assert [region.string.value for region in regions if region.string] == ["a", "b"]
@@ -180,7 +181,7 @@ def test_python_dedent_none_keeps_the_raw_value(tmp_path: Path) -> None:
     path = _syntax(
         tmp_path,
         "syntax_version: 1\nsource_type: python\nname: raw\n"
-        "docstring_owners: [function]\ndedent: none\ncomments: false\n",
+        "docstring_owners: [function]\ndedent: none\ncomments: false\ncomment_exclusions: []\n",
     )
     regions = default_registry().segmenter("python", path).segment(PYTHON_SOURCE)
     assert [region.attributes["name"] for region in regions] == ["Owner.method", "run"]
@@ -191,7 +192,7 @@ def test_python_unknown_owner_is_rejected(tmp_path: Path) -> None:
     path = _syntax(
         tmp_path,
         "syntax_version: 1\nsource_type: python\nname: x\n"
-        "docstring_owners: [method]\ndedent: none\ncomments: false\n",
+        "docstring_owners: [method]\ndedent: none\ncomments: false\ncomment_exclusions: []\n",
     )
     with pytest.raises(SyntaxFileError, match="method"):
         default_registry().segmenter("python", path)
