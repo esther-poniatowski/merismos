@@ -1,0 +1,10 @@
+# Strings extracted from a YAML document: the values and items written in prose, and comments.
+syntax_version: 1
+source_type: yaml
+name: strings
+
+mapping_values: true
+sequence_items: true
+# A key names a field rather than stating prose.
+mapping_keys: false
+comments: true

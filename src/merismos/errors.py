@@ -14,6 +14,8 @@ UnknownSourceTypeError
     No segmenter is registered for the requested source type.
 DecodingError
     A prose string could not be decoded with an exact map to its source.
+SourceSyntaxError
+    A structured source does not parse in its format.
 """
 
 
@@ -34,3 +36,7 @@ class UnknownSourceTypeError(MerismosError, KeyError):
 
 class DecodingError(MerismosError):
     """A prose string could not be decoded with an exact map to its source."""
+
+
+class SourceSyntaxError(MerismosError):
+    """A structured source does not parse in its format, so that no region can be located."""

@@ -1,0 +1,10 @@
+# Strings extracted from a Python module: every docstring, dedented as inspect.cleandoc dedents
+# it, and comments.
+syntax_version: 1
+source_type: python
+name: docstrings
+
+docstring_owners: [module, class, function]
+# cleandoc or none.
+dedent: cleandoc
+comments: true

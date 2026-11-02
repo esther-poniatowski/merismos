@@ -223,6 +223,9 @@ class Segmentation:
     def __len__(self) -> int:
         return len(self.regions)
 
+    def __getitem__(self, index: int) -> Region:
+        return self.regions[index]
+
     def select(self, kinds: Iterable[str]) -> tuple[Region, ...]:
         """Return the regions of the given kinds, in the order of the segmentation."""
         wanted = frozenset(kinds)

@@ -32,6 +32,9 @@ from .errors import SyntaxFileError, UnknownSourceTypeError
 from .markdown.segmenter import MarkdownSegmenter
 from .markdown.syntax import parse_markdown_syntax
 from .model import Segmentation
+from .structured.commit_source import CommitSegmenter, parse_commit_syntax
+from .structured.python_source import PythonSegmenter, parse_python_syntax
+from .structured.yaml_source import YamlSegmenter, parse_yaml_syntax
 from .syntax import (
     PACKAGED_SYNTAXES,
     SyntaxDocument,
@@ -156,7 +159,27 @@ def _build_markdown(document: SyntaxDocument, source_type: str) -> Segmenter:
     return MarkdownSegmenter(parse_markdown_syntax(document.name, document.body), source_type)
 
 
-SHIPPED_TYPES = (SourceType("markdown", _build_markdown),)
+def _build_yaml(document: SyntaxDocument, source_type: str) -> Segmenter:
+    """Build the YAML segmenter of a syntax document."""
+    return YamlSegmenter(parse_yaml_syntax(document.name, document.body), source_type)
+
+
+def _build_python(document: SyntaxDocument, source_type: str) -> Segmenter:
+    """Build the Python segmenter of a syntax document."""
+    return PythonSegmenter(parse_python_syntax(document.name, document.body), source_type)
+
+
+def _build_commit(document: SyntaxDocument, source_type: str) -> Segmenter:
+    """Build the commit segmenter of a syntax document."""
+    return CommitSegmenter(parse_commit_syntax(document.name, document.body), source_type)
+
+
+SHIPPED_TYPES = (
+    SourceType("markdown", _build_markdown),
+    SourceType("yaml", _build_yaml),
+    SourceType("python", _build_python),
+    SourceType("commit", _build_commit),
+)
 """Source types shipped with Merismos."""
 
 

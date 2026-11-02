@@ -2,3 +2,6 @@
 # syntax file of this folder.
 defaults:
   markdown: markdown-obsidian
+  yaml: yaml-strings
+  python: python-docstrings
+  commit: commit-git
