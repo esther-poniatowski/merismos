@@ -1,5 +1,9 @@
 """
-Initialization logic and public interface for the `merismos` package.
+Segmentation of documents into typed regions with exact offsets, for the tools that check texts.
+
+Merismos returns the regions of a source and applies no policy to them: each consumer selects
+the kinds that it masks, scans or reads. The grammar of each source type comes from a syntax file,
+so that a dialect changes without code.
 
 Variables
 ---------
@@ -11,27 +15,27 @@ __all__ : list
 
 Functions
 ---------
+segment(source, source_type, syntax) -> Segmentation
+    Segment one source with the default registry.
 info() -> str
     Format diagnostic information about the package and platform.
 
 Examples
 --------
-To programmatically retrieve the package version, a string:
-
-    >>> import merismos
-    >>> isinstance(merismos.__version__, str)
-    True
-
-See Also
---------
-importlib.metadata.version
-    Function to retrieve the version of a package.
-PackageNotFoundError
-    Exception raised when the package is not found in the environment.
+>>> segmentation = segment("Let $x_i$ vary.", "markdown")
+>>> [(region.kind, segmentation.text(region.content)) for region in segmentation]
+[('inline-math', 'x_i')]
 """
 
+from functools import lru_cache
 from importlib.metadata import version, PackageNotFoundError
+from pathlib import Path
 import platform
+
+from .errors import DecodingError, MerismosError, SyntaxFileError, UnknownSourceTypeError
+from .model import AttributeValue, DecodedString, Piece, Region, Segmentation, Span
+from .registry import Registry, Segmenter, SourceType, default_registry
+from .text import ContentView, content_view, mask
 
 try:
     if __package__ is None:  # erroneous script execution
@@ -40,7 +44,62 @@ try:
 except PackageNotFoundError:
     __version__ = "0.0.0+unknown"
 
-__all__ = ["info", "__version__"]
+__all__ = [
+    "AttributeValue",
+    "ContentView",
+    "DecodedString",
+    "DecodingError",
+    "MerismosError",
+    "Piece",
+    "Region",
+    "Registry",
+    "Segmentation",
+    "Segmenter",
+    "SourceType",
+    "Span",
+    "SyntaxFileError",
+    "UnknownSourceTypeError",
+    "content_view",
+    "default_registry",
+    "info",
+    "mask",
+    "segment",
+    "__version__",
+]
+
+
+@lru_cache(maxsize=None)
+def _segmenter(source_type: str, syntax: Path | None) -> Segmenter:
+    """Build the segmenter of a source type once; it is immutable, so every call shares it."""
+    return default_registry().segmenter(source_type, syntax)
+
+
+def segment(source: str, source_type: str, syntax: Path | None = None) -> Segmentation:
+    """
+    Segment one source with the source types shipped with Merismos.
+
+    Parameters
+    ----------
+    source : str
+        Text to segment.
+    source_type : str
+        Name of its source type, such as `markdown`.
+    syntax : Path | None
+        Syntax file to read, or None for the default syntax of the type.
+
+    Returns
+    -------
+    Segmentation
+        Regions of the source.
+
+    Raises
+    ------
+    UnknownSourceTypeError
+        If the source type is not shipped with Merismos.
+    SyntaxFileError
+        If the syntax file is invalid.
+    """
+    return _segmenter(source_type, None if syntax is None else syntax.resolve()).segment(source)
 
 
 def info() -> str:

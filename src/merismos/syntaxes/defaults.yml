@@ -1,0 +1,4 @@
+# Syntax read for each source type when a consumer passes none of its own, by the name of a
+# syntax file of this folder.
+defaults:
+  markdown: markdown-obsidian

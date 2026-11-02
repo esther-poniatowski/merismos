@@ -1,0 +1,66 @@
+# Syntax of the Markdown dialect read by Obsidian, as far as the conformance cases of Merismos
+# state it. A section set to null disables its construct.
+syntax_version: 1
+source_type: markdown
+name: obsidian
+
+# Columns between two tab stops, and columns admitted before the marker of a block.
+tab_width: 4
+block_indent: 3
+
+frontmatter:
+  fence: "---"
+
+fences:
+  characters: ["`", "~"]
+  minimum_length: 3
+
+indented_code:
+  indent: 4
+
+headings:
+  marker: "#"
+  maximum_level: 6
+
+quotations:
+  marker: ">"
+  callout:
+    opening: "[!"
+    closing: "]"
+    # The type of a callout, as written between its delimiters.
+    type_pattern: "[A-Za-z0-9_-]+"
+    fold_signs: ["+", "-"]
+
+lists:
+  bullets: ["-", "*", "+"]
+  ordered_delimiters: [".", ")"]
+  maximum_digits: 9
+  # Columns of spacing after a marker that still set the indentation of the content.
+  maximum_spacing: 4
+
+thematic_breaks:
+  characters: ["-", "*", "_"]
+  minimum_count: 3
+
+# A run of these characters under a paragraph closes the paragraph.
+setext_underlines: ["=", "-"]
+
+code_span: "`"
+
+math:
+  display: "$$"
+  inline: "$"
+  inline_spans_lines: false
+
+links:
+  markdown: true
+  wikilink:
+    opening: "[["
+    closing: "]]"
+    alias_separator: "|"
+  embed_prefix: "!"
+
+escape:
+  character: "\\"
+  # The ASCII punctuation characters, as CommonMark admits them after a backslash.
+  escapable: "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
