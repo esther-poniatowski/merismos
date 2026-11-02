@@ -14,6 +14,8 @@ frontmatter:
 fences:
   characters: ["`", "~"]
   minimum_length: 3
+  # The info string of a backtick fence holds no backtick, as in CommonMark.
+  info_excludes_fence: ["`"]
 
 indented_code:
   indent: 4
@@ -24,6 +26,8 @@ headings:
 
 quotations:
   marker: ">"
+  # Columns of space after the marker that belong to the marker rather than to the content.
+  spacing: 1
   callout:
     opening: "[!"
     closing: "]"
@@ -51,9 +55,20 @@ math:
   display: "$$"
   inline: "$"
   inline_spans_lines: false
+  # Whether a blank line inside display mathematics keeps it open; to be observed in Obsidian.
+  display_spans_blank_lines: false
 
 links:
-  markdown: true
+  markdown:
+    text_opening: "["
+    text_closing: "]"
+    destination_opening: "("
+    destination_closing: ")"
+    destination_brackets: ["<", ">"]
+    # Each pair names the opening and the closing character of a title.
+    title_delimiters: ['""', "''", "()"]
+  # Whether the text of a Markdown link may hold embeds, as an image inside a link does.
+  embeds_in_text: true
   wikilink:
     opening: "[["
     closing: "]]"

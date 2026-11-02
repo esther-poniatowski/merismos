@@ -31,6 +31,7 @@ packaged_syntax_document(name) -> SyntaxDocument
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
+import re
 from typing import Mapping, Sequence
 
 import yaml
@@ -87,10 +88,6 @@ class Fields:
         self._read.add(key)
         return self._data.get(key)
 
-    def has(self, key: str) -> bool:
-        """Whether the mapping holds the key with a value other than null."""
-        return self._data.get(key) is not None
-
     def string(self, key: str) -> str:
         """Read a required non-empty string."""
         value = self._get(key)
@@ -143,6 +140,26 @@ class Fields:
         if value is not None and len(value) != 1:
             raise self._error(key, "expected a single character")
         return value
+
+    def pattern(self, key: str) -> re.Pattern[str] | None:
+        """Read a regular expression, or None when the key is absent or null."""
+        text = self.optional_string(key)
+        if text is None:
+            return None
+        try:
+            return re.compile(text)
+        except re.error as error:
+            raise self._error(key, f"invalid regular expression: {error}") from error
+
+    def patterns(self, key: str) -> tuple[re.Pattern[str], ...]:
+        """Read a required list of regular expressions, possibly empty."""
+        compiled: list[re.Pattern[str]] = []
+        for text in self.strings(key):
+            try:
+                compiled.append(re.compile(text))
+            except re.error as error:
+                raise self._error(key, f"invalid regular expression {text!r}: {error}") from error
+        return tuple(compiled)
 
     def section(self, key: str) -> "Fields | None":
         """Read a nested mapping as a reader of its own, or None when the key is absent or null."""

@@ -17,6 +17,8 @@ Functions
 ---------
 segment(source, source_type, syntax) -> Segmentation
     Segment one source with the default registry.
+inline_regions(source, segments, syntax) -> Segmentation
+    Scan the inline constructs of one Markdown paragraph, given the spans of its lines.
 info() -> str
     Format diagnostic information about the package and platform.
 
@@ -27,14 +29,30 @@ Examples
 [('inline-math', 'x_i')]
 """
 
-from functools import lru_cache
+from functools import cache
 from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 import platform
+from typing import Sequence
 
-from .errors import DecodingError, MerismosError, SyntaxFileError, UnknownSourceTypeError
+from .errors import (
+    DecodingError,
+    MerismosError,
+    SourceSyntaxError,
+    SyntaxFileError,
+    UnknownSourceTypeError,
+)
+from .markdown.segmenter import MarkdownSegmenter
 from .model import AttributeValue, DecodedString, Piece, Region, Segmentation, Span
-from .registry import Registry, Segmenter, SourceType, default_registry
+from .registry import (
+    PackagedSyntax,
+    Registry,
+    Segmenter,
+    SegmenterBuilder,
+    SourceType,
+    SyntaxReference,
+    default_registry,
+)
 from .text import ContentView, content_view, mask
 
 try:
@@ -49,28 +67,46 @@ __all__ = [
     "ContentView",
     "DecodedString",
     "DecodingError",
+    "MarkdownSegmenter",
     "MerismosError",
+    "PackagedSyntax",
     "Piece",
     "Region",
     "Registry",
     "Segmentation",
     "Segmenter",
+    "SegmenterBuilder",
+    "SourceSyntaxError",
     "SourceType",
     "Span",
     "SyntaxFileError",
+    "SyntaxReference",
     "UnknownSourceTypeError",
     "content_view",
     "default_registry",
     "info",
+    "inline_regions",
     "mask",
     "segment",
     "__version__",
 ]
 
 
-@lru_cache(maxsize=None)
+@cache
+def _default_segmenter(source_type: str) -> Segmenter:
+    """
+    Build the segmenter of a source type under its packaged syntax, once.
+
+    A packaged syntax cannot change while the process runs, so its segmenter is shared. A syntax
+    file of the consumer is read again at each call, so that an edited file takes effect.
+    """
+    return default_registry().segmenter(source_type)
+
+
 def _segmenter(source_type: str, syntax: Path | None) -> Segmenter:
-    """Build the segmenter of a source type once; it is immutable, so every call shares it."""
+    """Return the segmenter of a source type, under its packaged syntax or a consumer file."""
+    if syntax is None:
+        return _default_segmenter(source_type)
     return default_registry().segmenter(source_type, syntax)
 
 
@@ -98,8 +134,32 @@ def segment(source: str, source_type: str, syntax: Path | None = None) -> Segmen
         If the source type is not shipped with Merismos.
     SyntaxFileError
         If the syntax file is invalid.
+    SourceSyntaxError
+        If a structured source does not parse in its format.
+    DecodingError
+        If a prose string of a structured source decodes to another value than its parser reads.
     """
-    return _segmenter(source_type, None if syntax is None else syntax.resolve()).segment(source)
+    return _segmenter(source_type, syntax).segment(source)
+
+
+def inline_regions(
+    source: str, segments: Sequence[Span], syntax: Path | None = None
+) -> Segmentation:
+    """
+    Scan the inline constructs of one Markdown paragraph, given the spans of its lines.
+
+    A consumer keeping a block parser of its own passes the text of each line of a paragraph,
+    without its container prefixes, and receives the inline regions with source offsets.
+
+    Raises
+    ------
+    SyntaxFileError
+        If the syntax file is invalid, or describes no Markdown dialect.
+    """
+    segmenter = _segmenter("markdown", syntax)
+    if not isinstance(segmenter, MarkdownSegmenter):
+        raise SyntaxFileError("the markdown source type is not served by the Markdown segmenter")
+    return segmenter.inline_regions(source, segments)
 
 
 def info() -> str:

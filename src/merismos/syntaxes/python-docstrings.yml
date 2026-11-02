@@ -8,3 +8,9 @@ docstring_owners: [module, class, function]
 # cleandoc or none.
 dedent: cleandoc
 comments: true
+# Patterns of the comments that state a directive rather than prose, matched after the marker:
+# a shebang, a coding declaration, and the directives of type checkers, linters and formatters.
+comment_exclusions:
+  - "!"
+  - "[ \\t]*-\\*-.*coding"
+  - "[ \\t]*(type|pyright|mypy|pylint|noqa|pragma|fmt|isort)\\b"

@@ -4,12 +4,15 @@ Registry of source types: the segmenter of each type, and the syntax that it rea
 The registry is the extension point of Merismos. A consumer segmenting a source type that
 Merismos does not ship registers a builder of its own, and a consumer segmenting a shipped type
 under another grammar passes its own syntax file. The default syntax of each shipped type is
-declared in the packaged file `syntaxes/defaults.yml`, not in code.
+declared in the packaged file `syntaxes/defaults.yml`, not in code, and the registry checks that
+this file and the shipped builders name the same types.
 
 Classes
 -------
 Segmenter
     Protocol of an object segmenting the sources of one type.
+PackagedSyntax
+    Reference to a syntax file shipped with Merismos.
 SourceType
     Name of a source type with the builder of its segmenter.
 Registry
@@ -49,12 +52,34 @@ DEFAULTS_FILE = "defaults.yml"
 class Segmenter(Protocol):
     """Protocol of an object segmenting the sources of one type."""
 
+    @property
+    def kinds(self) -> frozenset[str]:
+        """Kinds of the regions that the segmenter returns."""
+
     def segment(self, source: str) -> Segmentation:
         """Segment one source."""
 
 
 SegmenterBuilder = Callable[[SyntaxDocument, str], Segmenter]
 """Builder of a segmenter from a syntax document and the name of its source type."""
+
+
+@dataclass(frozen=True)
+class PackagedSyntax:
+    """
+    Reference to a syntax file shipped with Merismos, by its file name without extension.
+
+    Attributes
+    ----------
+    name : str
+        Name of the file in the package folder `syntaxes`.
+    """
+
+    name: str
+
+
+SyntaxReference = PackagedSyntax | Path
+"""Reference to a syntax file: a packaged syntax, or a file of the consumer."""
 
 
 @dataclass(frozen=True)
@@ -82,15 +107,19 @@ class Registry:
     ----------
     source_types : Iterable[SourceType]
         Source types to register.
-    defaults : Mapping[str, str]
-        Name of the packaged syntax read by default for each source type.
+    defaults : Mapping[str, SyntaxReference]
+        Syntax read by default for each source type.
     """
 
-    def __init__(self, source_types: Iterable[SourceType], defaults: Mapping[str, str]) -> None:
+    def __init__(
+        self, source_types: Iterable[SourceType], defaults: Mapping[str, SyntaxReference]
+    ) -> None:
         self._types = {source_type.name: source_type for source_type in source_types}
-        self._defaults = dict(defaults)
+        self._defaults = {name: _resolved(reference) for name, reference in defaults.items()}
 
-    def register(self, source_type: SourceType, default_syntax: Path | None = None) -> None:
+    def register(
+        self, source_type: SourceType, default_syntax: SyntaxReference | None = None
+    ) -> None:
         """
         Register a source type, replacing a type of the same name.
 
@@ -98,12 +127,13 @@ class Registry:
         ----------
         source_type : SourceType
             Source type to register.
-        default_syntax : Path | None
-            Syntax file read when a consumer requests the type without a syntax of its own.
+        default_syntax : SyntaxReference | None
+            Syntax read when a consumer requests the type without a syntax of its own. A path
+            resolves when it is registered, so a later change of directory leaves it valid.
         """
         self._types[source_type.name] = source_type
         if default_syntax is not None:
-            self._defaults[source_type.name] = str(default_syntax)
+            self._defaults[source_type.name] = _resolved(default_syntax)
 
     def names(self) -> tuple[str, ...]:
         """Return the names of the registered source types, sorted."""
@@ -144,14 +174,17 @@ class Registry:
 
     def _document(self, source_type: str, syntax: Path | None) -> SyntaxDocument:
         """Read the syntax passed by the consumer, or the default syntax of the type."""
-        if syntax is not None:
-            return load_syntax_document(syntax)
-        default = self._defaults.get(source_type)
-        if default is None:
+        reference = syntax if syntax is not None else self._defaults.get(source_type)
+        if reference is None:
             raise SyntaxFileError(f"source type {source_type!r} has no default syntax")
-        if default.endswith((".yml", ".yaml")):
-            return load_syntax_document(Path(default))
-        return packaged_syntax_document(default)
+        if isinstance(reference, PackagedSyntax):
+            return packaged_syntax_document(reference.name)
+        return load_syntax_document(reference)
+
+
+def _resolved(reference: SyntaxReference) -> SyntaxReference:
+    """Resolve a path reference, leaving a packaged reference unchanged."""
+    return reference.resolve() if isinstance(reference, Path) else reference
 
 
 def _build_markdown(document: SyntaxDocument, source_type: str) -> Segmenter:
@@ -174,16 +207,16 @@ def _build_commit(document: SyntaxDocument, source_type: str) -> Segmenter:
     return CommitSegmenter(parse_commit_syntax(document.name, document.body), source_type)
 
 
-SHIPPED_TYPES = (
-    SourceType("markdown", _build_markdown),
-    SourceType("yaml", _build_yaml),
-    SourceType("python", _build_python),
-    SourceType("commit", _build_commit),
-)
-"""Source types shipped with Merismos."""
+SHIPPED_BUILDERS: dict[str, SegmenterBuilder] = {
+    "markdown": _build_markdown,
+    "yaml": _build_yaml,
+    "python": _build_python,
+    "commit": _build_commit,
+}
+"""Builder of each shipped source type; the packaged defaults file names its syntax."""
 
 
-def _packaged_defaults() -> dict[str, str]:
+def _packaged_defaults() -> dict[str, SyntaxReference]:
     """Read the default syntax of each shipped source type from the packaged defaults file."""
     resource = resources.files(__package__).joinpath(PACKAGED_SYNTAXES, DEFAULTS_FILE)
     data = yaml.safe_load(resource.read_text(encoding="utf-8"))
@@ -194,9 +227,23 @@ def _packaged_defaults() -> dict[str, str]:
         raise SyntaxFileError(
             f"{PACKAGED_SYNTAXES}/{DEFAULTS_FILE}: expected a mapping under defaults"
         )
-    return dict(defaults)
+    return {key: PackagedSyntax(value) for key, value in defaults.items()}
 
 
 def default_registry() -> Registry:
-    """Return a new registry of the source types shipped with Merismos."""
-    return Registry(SHIPPED_TYPES, _packaged_defaults())
+    """
+    Return a new registry of the source types shipped with Merismos.
+
+    Raises
+    ------
+    SyntaxFileError
+        If the packaged defaults file and the shipped builders name different types, which is a
+        defect of the package.
+    """
+    defaults = _packaged_defaults()
+    if set(defaults) != set(SHIPPED_BUILDERS):
+        mismatch = ", ".join(sorted(set(defaults) ^ set(SHIPPED_BUILDERS)))
+        raise SyntaxFileError(
+            f"{PACKAGED_SYNTAXES}/{DEFAULTS_FILE} and the shipped types differ on: {mismatch}"
+        )
+    return Registry((SourceType(name, build) for name, build in SHIPPED_BUILDERS.items()), defaults)

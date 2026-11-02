@@ -16,6 +16,8 @@ DecodingError
     A prose string could not be decoded with an exact map to its source.
 SourceSyntaxError
     A structured source does not parse in its format.
+ConformanceFileError
+    A conformance file is malformed or names another contract.
 """
 
 
@@ -40,3 +42,7 @@ class DecodingError(MerismosError):
 
 class SourceSyntaxError(MerismosError):
     """A structured source does not parse in its format, so that no region can be located."""
+
+
+class ConformanceFileError(MerismosError):
+    """A conformance file is malformed or names another contract than the one checked."""

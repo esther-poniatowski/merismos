@@ -33,10 +33,16 @@ class FrontmatterSyntax:
 
 @dataclass(frozen=True)
 class FenceSyntax:
-    """Fenced code: a run of one fence character, at least `minimum_length` long."""
+    """
+    Fenced code: a run of one fence character, at least `minimum_length` long.
+
+    The info string of a fence made of a character of `info_excludes_fence` may not contain
+    that character, so that a run of them in a paragraph reads as a code span instead.
+    """
 
     characters: tuple[str, ...]
     minimum_length: int
+    info_excludes_fence: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -66,9 +72,10 @@ class CalloutSyntax:
 
 @dataclass(frozen=True)
 class QuotationSyntax:
-    """Quotation opened by `marker` on each line, possibly a callout."""
+    """Quotation opened by `marker`, followed by at most `spacing` columns, on each line."""
 
     marker: str
+    spacing: int
     callout: CalloutSyntax | None
 
 
@@ -97,6 +104,7 @@ class MathSyntax:
     display: str | None
     inline: str | None
     inline_spans_lines: bool
+    display_spans_blank_lines: bool
 
 
 @dataclass(frozen=True)
@@ -109,12 +117,38 @@ class WikilinkSyntax:
 
 
 @dataclass(frozen=True)
+class MarkdownLinkSyntax:
+    """
+    Markdown link: its text between brackets, then its destination and title between parentheses.
+
+    Attributes
+    ----------
+    text_opening, text_closing : str
+        Characters around the text.
+    destination_opening, destination_closing : str
+        Characters around the destination and the title.
+    destination_brackets : tuple[str, str]
+        Characters around a destination that holds spaces.
+    title_delimiters : dict[str, str]
+        Closing character of a title, by its opening character.
+    """
+
+    text_opening: str
+    text_closing: str
+    destination_opening: str
+    destination_closing: str
+    destination_brackets: tuple[str, str]
+    title_delimiters: dict[str, str]
+
+
+@dataclass(frozen=True)
 class LinkSyntax:
     """Links: Markdown links, wikilinks, and the prefix that turns either into an embed."""
 
-    markdown: bool
+    markdown: MarkdownLinkSyntax | None
     wikilink: WikilinkSyntax | None
     embed_prefix: str | None
+    embeds_in_text: bool
 
 
 @dataclass(frozen=True)
@@ -125,8 +159,8 @@ class EscapeSyntax:
     escapable: frozenset[str]
 
 
-@dataclass(frozen=True)
 # One attribute per construct of the dialect, each None when the dialect disables it.
+@dataclass(frozen=True)
 class MarkdownSyntax:  # pylint: disable=too-many-instance-attributes
     """
     Complete syntax of a Markdown dialect.
@@ -165,7 +199,23 @@ class MarkdownSyntax:  # pylint: disable=too-many-instance-attributes
     escape: EscapeSyntax | None
 
 
-def _callout(fields: Fields | None) -> CalloutSyntax | None:
+def _required_character(fields: Fields, key: str, name: str) -> str:
+    """Read a single character that the section requires."""
+    character = fields.character(key)
+    if character is None:
+        raise SyntaxFileError(f"{name}: {key}: expected a single character")
+    return character
+
+
+def _pair(fields: Fields, key: str, name: str) -> tuple[str, str]:
+    """Read a list of exactly two single characters: an opening and a closing one."""
+    pair = fields.characters(key)
+    if len(pair) != 2:
+        raise SyntaxFileError(f"{name}: {key}: expected an opening and a closing character")
+    return pair[0], pair[1]
+
+
+def _callout(fields: Fields | None, name: str) -> CalloutSyntax | None:
     """Parse the callout section of a quotation, or None when it is disabled."""
     if fields is None:
         return None
@@ -173,7 +223,9 @@ def _callout(fields: Fields | None) -> CalloutSyntax | None:
     try:
         compiled = re.compile(pattern)
     except re.error as error:
-        raise SyntaxFileError(f"invalid callout type_pattern {pattern!r}: {error}") from error
+        raise SyntaxFileError(
+            f"{name}: invalid callout type_pattern {pattern!r}: {error}"
+        ) from error
     callout = CalloutSyntax(
         opening=fields.string("opening"),
         closing=fields.string("closing"),
@@ -192,12 +244,37 @@ def _math(fields: Fields | None) -> MathSyntax | None:
         display=fields.optional_string("display"),
         inline=fields.optional_string("inline"),
         inline_spans_lines=fields.boolean("inline_spans_lines"),
+        display_spans_blank_lines=fields.boolean("display_spans_blank_lines"),
     )
     fields.finish()
     return math
 
 
-def _links(fields: Fields | None) -> LinkSyntax | None:
+def _markdown_links(fields: Fields | None, name: str) -> MarkdownLinkSyntax | None:
+    """Parse the Markdown-link section, or None when Markdown links are disabled."""
+    if fields is None:
+        return None
+    titles = dict(_split_title(pair, name) for pair in fields.strings("title_delimiters"))
+    links = MarkdownLinkSyntax(
+        text_opening=_required_character(fields, "text_opening", name),
+        text_closing=_required_character(fields, "text_closing", name),
+        destination_opening=_required_character(fields, "destination_opening", name),
+        destination_closing=_required_character(fields, "destination_closing", name),
+        destination_brackets=_pair(fields, "destination_brackets", name),
+        title_delimiters=titles,
+    )
+    fields.finish()
+    return links
+
+
+def _split_title(pair: str, name: str) -> tuple[str, str]:
+    """Split a title delimiter written as two characters, its opening and its closing one."""
+    if len(pair) != 2:
+        raise SyntaxFileError(f"{name}: title_delimiters: expected pairs of two characters")
+    return pair[0], pair[1]
+
+
+def _links(fields: Fields | None, name: str) -> LinkSyntax | None:
     """Parse the links section, or None when links are disabled."""
     if fields is None:
         return None
@@ -211,12 +288,107 @@ def _links(fields: Fields | None) -> LinkSyntax | None:
         )
         wiki_fields.finish()
     links = LinkSyntax(
-        markdown=fields.boolean("markdown"),
+        markdown=_markdown_links(fields.section("markdown"), name),
         wikilink=wikilink,
         embed_prefix=fields.optional_string("embed_prefix"),
+        embeds_in_text=fields.boolean("embeds_in_text"),
     )
     fields.finish()
     return links
+
+
+def _frontmatter(section: Fields | None) -> FrontmatterSyntax | None:
+    """Parse the frontmatter section, or None when frontmatter is disabled."""
+    if section is None:
+        return None
+    parsed = FrontmatterSyntax(fence=section.string("fence"))
+    section.finish()
+    return parsed
+
+
+def _fences(section: Fields | None) -> FenceSyntax | None:
+    """Parse the fences section, or None when fenced code is disabled."""
+    if section is None:
+        return None
+    parsed = FenceSyntax(
+        characters=section.characters("characters"),
+        minimum_length=section.integer("minimum_length", minimum=1),
+        info_excludes_fence=frozenset(section.characters("info_excludes_fence")),
+    )
+    section.finish()
+    return parsed
+
+
+def _indented_code(section: Fields | None) -> IndentedCodeSyntax | None:
+    """Parse the indented-code section, or None when indented code is disabled."""
+    if section is None:
+        return None
+    parsed = IndentedCodeSyntax(indent=section.integer("indent", minimum=1))
+    section.finish()
+    return parsed
+
+
+def _headings(section: Fields | None, name: str) -> HeadingSyntax | None:
+    """Parse the headings section, or None when headings are disabled."""
+    if section is None:
+        return None
+    parsed = HeadingSyntax(
+        marker=_required_character(section, "marker", name),
+        maximum_level=section.integer("maximum_level", minimum=1),
+    )
+    section.finish()
+    return parsed
+
+
+def _quotations(section: Fields | None, name: str) -> QuotationSyntax | None:
+    """Parse the quotations section, or None when quotations are disabled."""
+    if section is None:
+        return None
+    parsed = QuotationSyntax(
+        marker=_required_character(section, "marker", name),
+        spacing=section.integer("spacing"),
+        callout=_callout(section.section("callout"), name),
+    )
+    section.finish()
+    return parsed
+
+
+def _lists(section: Fields | None) -> ListSyntax | None:
+    """Parse the lists section, or None when lists are disabled."""
+    if section is None:
+        return None
+    parsed = ListSyntax(
+        bullets=section.characters("bullets"),
+        ordered_delimiters=section.characters("ordered_delimiters"),
+        maximum_digits=section.integer("maximum_digits"),
+        maximum_spacing=section.integer("maximum_spacing", minimum=1),
+    )
+    section.finish()
+    return parsed
+
+
+def _thematic_breaks(section: Fields | None) -> ThematicBreakSyntax | None:
+    """Parse the thematic-breaks section, or None when thematic breaks are disabled."""
+    if section is None:
+        return None
+    parsed = ThematicBreakSyntax(
+        characters=section.characters("characters"),
+        minimum_count=section.integer("minimum_count", minimum=1),
+    )
+    section.finish()
+    return parsed
+
+
+def _escape(section: Fields | None, name: str) -> EscapeSyntax | None:
+    """Parse the escape section, or None when escapes are disabled."""
+    if section is None:
+        return None
+    parsed = EscapeSyntax(
+        character=_required_character(section, "character", name),
+        escapable=frozenset(section.string("escapable")),
+    )
+    section.finish()
+    return parsed
 
 
 def parse_markdown_syntax(name: str, fields: Fields) -> MarkdownSyntax:
@@ -240,89 +412,22 @@ def parse_markdown_syntax(name: str, fields: Fields) -> MarkdownSyntax:
     SyntaxFileError
         If a key is missing, unknown, or holds a value of the wrong type.
     """
-    sections = {
-        key: fields.section(key)
-        for key in (
-            "frontmatter",
-            "fences",
-            "indented_code",
-            "headings",
-            "quotations",
-            "lists",
-            "thematic_breaks",
-            "math",
-            "links",
-            "escape",
-        )
-    }
-    frontmatter = fences = indented = headings = quotations = lists = breaks = escape = None
-    if (section := sections["frontmatter"]) is not None:
-        frontmatter = FrontmatterSyntax(fence=section.string("fence"))
-        section.finish()
-    if (section := sections["fences"]) is not None:
-        fences = FenceSyntax(
-            characters=section.characters("characters"),
-            minimum_length=section.integer("minimum_length", minimum=1),
-        )
-        section.finish()
-    if (section := sections["indented_code"]) is not None:
-        indented = IndentedCodeSyntax(indent=section.integer("indent", minimum=1))
-        section.finish()
-    if (section := sections["headings"]) is not None:
-        headings = HeadingSyntax(
-            marker=section.character("marker") or "",
-            maximum_level=section.integer("maximum_level", minimum=1),
-        )
-        section.finish()
-        if not headings.marker:
-            raise SyntaxFileError(f"{name}: headings.marker: expected a single character")
-    if (section := sections["quotations"]) is not None:
-        quotations = QuotationSyntax(
-            marker=section.character("marker") or "",
-            callout=_callout(section.section("callout")),
-        )
-        section.finish()
-        if not quotations.marker:
-            raise SyntaxFileError(f"{name}: quotations.marker: expected a single character")
-    if (section := sections["lists"]) is not None:
-        lists = ListSyntax(
-            bullets=section.characters("bullets"),
-            ordered_delimiters=section.characters("ordered_delimiters"),
-            maximum_digits=section.integer("maximum_digits"),
-            maximum_spacing=section.integer("maximum_spacing", minimum=1),
-        )
-        section.finish()
-    if (section := sections["thematic_breaks"]) is not None:
-        breaks = ThematicBreakSyntax(
-            characters=section.characters("characters"),
-            minimum_count=section.integer("minimum_count", minimum=1),
-        )
-        section.finish()
-    if (section := sections["escape"]) is not None:
-        escape_character = section.character("character")
-        if escape_character is None:
-            raise SyntaxFileError(f"{name}: escape.character: expected a single character")
-        escape = EscapeSyntax(
-            character=escape_character,
-            escapable=frozenset(section.string("escapable")),
-        )
-        section.finish()
     syntax = MarkdownSyntax(
         name=name,
         tab_width=fields.integer("tab_width", minimum=1),
         block_indent=fields.integer("block_indent"),
-        frontmatter=frontmatter,
-        fences=fences,
-        indented_code=indented,
-        headings=headings,
-        quotations=quotations,
-        lists=lists,
-        thematic_breaks=breaks,
+        frontmatter=_frontmatter(fields.section("frontmatter")),
+        fences=_fences(fields.section("fences")),
+        indented_code=_indented_code(fields.section("indented_code")),
+        headings=_headings(fields.section("headings"), name),
+        quotations=_quotations(fields.section("quotations"), name),
+        lists=_lists(fields.section("lists")),
+        thematic_breaks=_thematic_breaks(fields.section("thematic_breaks")),
         setext_underlines=fields.characters("setext_underlines"),
         code_span=fields.character("code_span"),
-        math=_math(sections["math"]),
-        links=_links(sections["links"]),
-        escape=escape,
+        math=_math(fields.section("math")),
+        links=_links(fields.section("links"), name),
+        escape=_escape(fields.section("escape"), name),
     )
     fields.finish()
     return syntax

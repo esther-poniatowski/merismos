@@ -19,3 +19,12 @@ COMMIT_SUBJECT = "commit-subject"
 
 COMMIT_BODY = "commit-body"
 """Body of a commit message, without its comment lines and its trailers."""
+
+YAML_KINDS = (YAML_VALUE, YAML_COMMENT)
+"""Every kind of a YAML source."""
+
+PYTHON_KINDS = (PYTHON_DOCSTRING, PYTHON_COMMENT)
+"""Every kind of a Python source."""
+
+COMMIT_KINDS = (COMMIT_SUBJECT, COMMIT_BODY)
+"""Every kind of a commit message."""

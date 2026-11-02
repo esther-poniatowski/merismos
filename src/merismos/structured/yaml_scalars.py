@@ -15,9 +15,10 @@ ScalarDecoder
 """
 
 from ..errors import DecodingError
+from ..lines import YAML_LINE_ENDINGS, line_starts
 from .traced import TracedText
 
-LINE_BREAKS = "\r\n\x85  "
+LINE_BREAKS = "\r\n\x85\u2028\u2029"
 """Characters that break a line in YAML."""
 
 END = "\0"
@@ -40,8 +41,8 @@ ESCAPE_REPLACEMENTS = {
     "\\": "\\",
     "N": "\x85",
     "_": "\xa0",
-    "L": " ",
-    "P": " ",
+    "L": "\u2028",
+    "P": "\u2029",
 }
 """Single-character escapes of a double-quoted scalar, each with the code point it produces."""
 
@@ -65,9 +66,7 @@ class ScalarDecoder:
     def __init__(self, source: str) -> None:
         self._source = source
         self._limit = len(source)
-        self._line_starts = [0] + [
-            index + 1 for index, character in enumerate(source) if character == "\n"
-        ]
+        self._line_starts = line_starts(source, YAML_LINE_ENDINGS)
 
     # --- reading ------------------------------------------------------------------------------
 
@@ -92,7 +91,7 @@ class ScalarDecoder:
         if character in "\r\n\x85":
             width = 2 if self._source.startswith("\r\n", position) else 1
             return "\n", position + width
-        if character in "  ":
+        if character in "\u2028\u2029":
             return character, position + 1
         return "", position
 

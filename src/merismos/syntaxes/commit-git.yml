@@ -10,3 +10,5 @@ collapse_blank_lines: true
 subject: first-paragraph
 # A trailer line opens with a token, a colon and a space, such as "Signed-off-by: ".
 trailer_pattern: "[A-Za-z0-9][A-Za-z0-9-]*: "
+# The line written by `git commit --verbose` before the diff; it and every later line are left out.
+scissors_pattern: "# -+ >8 -+"

@@ -8,3 +8,5 @@ sequence_items: true
 # A key names a field rather than stating prose.
 mapping_keys: false
 comments: true
+# Patterns of the comments that state a directive rather than prose, matched after the marker.
+comment_exclusions: ["\\s*yaml-language-server:"]

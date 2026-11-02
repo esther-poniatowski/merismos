@@ -20,18 +20,23 @@ parse_commit_syntax(name, fields) -> CommitSyntax
 """
 
 from dataclasses import dataclass
+from enum import Enum
 import re
 
 from ..errors import SyntaxFileError
-from ..markdown.lines import Line, split_lines
+from ..lines import Line, split_lines
 from ..model import Region, Segmentation, Span
 from ..syntax import Fields
 from . import kinds
 from .base import StructuredSegmenter
 from .traced import TracedText
 
-SUBJECT_EXTENTS = ("first-paragraph", "first-line")
-"""Extents of a subject: the first paragraph, as Git reads it, or the first line only."""
+
+class SubjectExtent(Enum):
+    """Extent of a subject: the first paragraph, as Git reads it, or the first line only."""
+
+    FIRST_PARAGRAPH = "first-paragraph"
+    FIRST_LINE = "first-line"
 
 
 @dataclass(frozen=True)
@@ -47,36 +52,37 @@ class CommitSyntax:
         Whether the whitespace ending a line is left out of the values.
     collapse_blank_lines : bool
         Whether a run of blank lines reads as one blank line.
-    subject : str
-        Extent of the subject: `first-paragraph` or `first-line`.
+    subject : SubjectExtent
+        Extent of the subject.
     trailer : re.Pattern[str] | None
         Form of a trailer line, or None when no final paragraph is a block of trailers.
+    scissors : re.Pattern[str] | None
+        Form of the line cutting the message, as `git commit --verbose` writes it before the diff;
+        the line and everything after it are left out. None when no line cuts the message.
     """
 
     comment_character: str | None
     strip_trailing_whitespace: bool
     collapse_blank_lines: bool
-    subject: str
+    subject: SubjectExtent
     trailer: re.Pattern[str] | None
+    scissors: re.Pattern[str] | None
 
 
 def parse_commit_syntax(name: str, fields: Fields) -> CommitSyntax:
     """Parse the body of a commit syntax file, rejecting unknown keys and values."""
-    subject = fields.string("subject")
-    if subject not in SUBJECT_EXTENTS:
-        choices = ", ".join(SUBJECT_EXTENTS)
-        raise SyntaxFileError(f"{name}: subject: expected one of {choices}")
-    pattern = fields.optional_string("trailer_pattern")
     try:
-        trailer = re.compile(pattern) if pattern is not None else None
-    except re.error as error:
-        raise SyntaxFileError(f"{name}: trailer_pattern: {error}") from error
+        subject = SubjectExtent(fields.string("subject"))
+    except ValueError as error:
+        choices = ", ".join(member.value for member in SubjectExtent)
+        raise SyntaxFileError(f"{name}: subject: expected one of {choices}") from error
     syntax = CommitSyntax(
         comment_character=fields.character("comment_character"),
         strip_trailing_whitespace=fields.boolean("strip_trailing_whitespace"),
         collapse_blank_lines=fields.boolean("collapse_blank_lines"),
         subject=subject,
-        trailer=trailer,
+        trailer=fields.pattern("trailer_pattern"),
+        scissors=fields.pattern("scissors_pattern"),
     )
     fields.finish()
     return syntax
@@ -94,14 +100,17 @@ class CommitSegmenter(StructuredSegmenter[CommitSyntax]):
         Name of the source type reported in each segmentation.
     """
 
+    kinds = frozenset(kinds.COMMIT_KINDS)
+    """Kinds of the regions that the segmenter returns."""
+
     def segment(self, source: str) -> Segmentation:
         """Segment a commit message into its subject and its body."""
-        lines = [line for line in split_lines(source) if not self._is_comment(source, line)]
+        lines = [line for line in self._uncut_lines(source) if not self._is_comment(source, line)]
         paragraphs = self._paragraphs(source, lines)
         regions: list[Region] = []
         if paragraphs:
             first, _ = paragraphs[0]
-            subject = first if self._syntax.subject == "first-paragraph" else first[:1]
+            subject = first if self._syntax.subject is SubjectExtent.FIRST_PARAGRAPH else first[:1]
             body = paragraphs[1:]
             if len(subject) < len(first):
                 body = [(first[len(subject) :], 0)] + body
@@ -111,6 +120,17 @@ class CommitSegmenter(StructuredSegmenter[CommitSyntax]):
             if body:
                 regions.append(self._region(kinds.COMMIT_BODY, source, body))
         return self._segmentation(source, regions)
+
+    def _uncut_lines(self, source: str) -> list[Line]:
+        """The lines of a message before its scissors line, when the syntax declares one."""
+        lines = list(split_lines(source))
+        pattern = self._syntax.scissors
+        if pattern is None:
+            return lines
+        for index, line in enumerate(lines):
+            if pattern.fullmatch(source, line.start, line.end):
+                return lines[:index]
+        return lines
 
     def _is_comment(self, source: str, line: Line) -> bool:
         """Whether a line is a comment line, left out of every value."""

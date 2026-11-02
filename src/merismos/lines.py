@@ -1,6 +1,10 @@
 """
 Lines of a source and the indentation of their content, measured in columns.
 
+Each format breaks its lines at its own set of endings: Markdown, Python and commit messages at
+a line feed, a carriage return or both, YAML also at the Unicode line and paragraph separators.
+The functions of this module take that set from their caller.
+
 Classes
 -------
 Line
@@ -10,14 +14,23 @@ Cursor
 
 Functions
 ---------
-split_lines(source) -> tuple[Line, ...]
+split_lines(source, endings) -> tuple[Line, ...]
     Split a source into lines, keeping the offsets of their endings.
+line_starts(source, endings) -> list[int]
+    Offsets of the first code point of each line.
+ending_width(source, position, endings) -> int
+    Width of the line ending at an offset, or 0.
+is_blank(source, start, end) -> bool
+    Whether the text between two offsets holds only indentation.
 """
 
 from dataclasses import dataclass
 
 LINE_ENDINGS = ("\r\n", "\n", "\r")
-"""Line endings recognized in a source, the two-character ending first so that it wins."""
+"""Line endings of Markdown, Python and commit messages, the two-character ending first."""
+
+YAML_LINE_ENDINGS = LINE_ENDINGS + ("\x85", "\u2028", "\u2029")
+"""Line endings of YAML, which also breaks at the next-line and the Unicode separators."""
 
 INDENT_CHARACTERS = frozenset(" \t")
 """Characters that indent the content of a line."""
@@ -43,25 +56,36 @@ class Line:
     next: int
 
 
-def split_lines(source: str) -> tuple[Line, ...]:
+def ending_width(source: str, position: int, endings: tuple[str, ...] = LINE_ENDINGS) -> int:
+    """Width of the line ending starting at `position`, or 0 when none starts there."""
+    for ending in endings:
+        if source.startswith(ending, position):
+            return len(ending)
+    return 0
+
+
+def split_lines(source: str, endings: tuple[str, ...] = LINE_ENDINGS) -> tuple[Line, ...]:
     """
     Split a source into lines, keeping the offsets of their endings.
 
-    A source ending with a line ending holds no empty last line.
+    A source ending with a line ending holds no empty last line. The endings are tried in order,
+    so a longer ending sharing its first character with a shorter one comes first.
 
     Examples
     --------
-    >>> [(line.start, line.end, line.next) for line in split_lines("a\\r\\nbc\\nd")]
+    >>> [(line.start, line.end, line.next) for line in split_lines("a\\r\\nbc\\rd")]
     [(0, 1, 3), (3, 5, 6), (6, 7, 7)]
     """
+    first_characters = frozenset(ending[0] for ending in endings)
     lines: list[Line] = []
     start = 0
     position = 0
     length = len(source)
     while position < length:
-        character = source[position]
-        if character in "\r\n":
-            width = 2 if source.startswith("\r\n", position) else 1
+        width = (
+            ending_width(source, position, endings) if source[position] in first_characters else 0
+        )
+        if width:
             lines.append(Line(start, position, position + width))
             position += width
             start = position
@@ -70,6 +94,22 @@ def split_lines(source: str) -> tuple[Line, ...]:
     if start < length:
         lines.append(Line(start, length, length))
     return tuple(lines)
+
+
+def line_starts(source: str, endings: tuple[str, ...] = LINE_ENDINGS) -> list[int]:
+    """
+    Offsets of the first code point of each line, a final line after a last ending included.
+
+    Examples
+    --------
+    >>> line_starts("a\\rb\\n")
+    [0, 2, 4]
+    """
+    starts = [0]
+    for line in split_lines(source, endings):
+        if line.next > line.end:
+            starts.append(line.next)
+    return starts
 
 
 @dataclass(frozen=True)

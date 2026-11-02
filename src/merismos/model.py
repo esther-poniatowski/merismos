@@ -211,11 +211,15 @@ class Segmentation:
         Name of the source type under which the text was segmented.
     regions : tuple[Region, ...]
         Regions of the source.
+    kinds : frozenset[str] | None
+        Kinds that the source type declares, against which `select` checks its argument, or None
+        when the segmenter declares none.
     """
 
     source: str
     source_type: str
     regions: tuple[Region, ...]
+    kinds: frozenset[str] | None = None
 
     def __iter__(self) -> Iterator[Region]:
         return iter(self.regions)
@@ -227,8 +231,20 @@ class Segmentation:
         return self.regions[index]
 
     def select(self, kinds: Iterable[str]) -> tuple[Region, ...]:
-        """Return the regions of the given kinds, in the order of the segmentation."""
+        """
+        Return the regions of the given kinds, in the order of the segmentation.
+
+        Raises
+        ------
+        ValueError
+            If a kind is unknown to the source type, so that a misspelled kind fails instead of
+            selecting nothing.
+        """
         wanted = frozenset(kinds)
+        if self.kinds is not None and not wanted <= self.kinds:
+            unknown = ", ".join(sorted(wanted - self.kinds))
+            known = ", ".join(sorted(self.kinds))
+            raise ValueError(f"unknown kinds for {self.source_type}: {unknown}; known: {known}")
         return tuple(region for region in self.regions if region.kind in wanted)
 
     def text(self, span: Span) -> str:

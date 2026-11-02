@@ -26,9 +26,12 @@ from typing import Mapping, Sequence
 
 import yaml
 
-from .errors import MerismosError
+from .errors import ConformanceFileError
 from .registry import Segmenter
 from .serialization import RegionData, region_to_data
+
+CONTRACT = "merismos:span-kinds@1"
+"""Contract whose expected regions the conformance files state."""
 
 
 @dataclass(frozen=True)
@@ -88,16 +91,17 @@ class Mismatch:
 
 
 def _case(data: object, origin: str) -> Case:
+    """Read one case of a conformance file, checking the types of its keys."""
     if not isinstance(data, Mapping):
-        raise MerismosError(f"{origin}: each case is a mapping")
+        raise ConformanceFileError(f"{origin}: each case is a mapping")
     identifier, source_type, text = data.get("id"), data.get("source"), data.get("text")
     regions = data.get("regions")
     if not (isinstance(identifier, str) and isinstance(source_type, str) and isinstance(text, str)):
-        raise MerismosError(f"{origin}: a case holds the strings id, source and text")
+        raise ConformanceFileError(f"{origin}: a case holds the strings id, source and text")
     if not isinstance(regions, Sequence) or not all(
         isinstance(region, Mapping) for region in regions
     ):
-        raise MerismosError(f"{origin}: case {identifier}: regions is a list of mappings")
+        raise ConformanceFileError(f"{origin}: case {identifier}: regions is a list of mappings")
     observed, note = data.get("observed"), data.get("note")
     return Case(
         identifier,
@@ -115,16 +119,19 @@ def load_cases(path: Path) -> tuple[Case, ...]:
 
     Raises
     ------
-    MerismosError
-        If the file cannot be read or holds no list of cases.
+    ConformanceFileError
+        If the file cannot be read, names another contract, or holds no list of cases.
     """
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as error:
-        raise MerismosError(f"{path}: cannot read the conformance file: {error}") from error
-    cases = data.get("cases") if isinstance(data, Mapping) else None
+        raise ConformanceFileError(f"{path}: cannot read the conformance file: {error}") from error
+    if not isinstance(data, Mapping) or data.get("contract") != CONTRACT:
+        found = data.get("contract") if isinstance(data, Mapping) else None
+        raise ConformanceFileError(f"{path}: contract {found!r}, expected {CONTRACT}")
+    cases = data.get("cases")
     if not isinstance(cases, Sequence):
-        raise MerismosError(f"{path}: expected a list under cases")
+        raise ConformanceFileError(f"{path}: expected a list under cases")
     return tuple(_case(item, str(path)) for item in cases)
 
 

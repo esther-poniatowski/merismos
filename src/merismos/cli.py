@@ -52,12 +52,11 @@ def cli_segment(
     """Print the regions of a source as JSON, one region per line."""
     try:
         segmenter = default_registry().segmenter(source_type, syntax)
-        source = path.read_text(encoding="utf-8")
-    except (MerismosError, OSError) as error:
+        segmentation = segmenter.segment(path.read_text(encoding="utf-8"))
+        regions = segmentation.select(kinds) if kinds else segmentation.regions
+    except (MerismosError, OSError, ValueError) as error:
         typer.echo(f"error: {error}", err=True)
         raise typer.Exit(2) from error
-    segmentation = segmenter.segment(source)
-    regions = segmentation.select(kinds) if kinds else segmentation.regions
     for region in regions:
         typer.echo(json.dumps(region_to_data(region), ensure_ascii=False))
 
@@ -76,14 +75,14 @@ def cli_conform(
         segmenters = {
             case.source_type: registry.segmenter(case.source_type, syntax) for case in cases
         }
+        mismatches = [
+            mismatch
+            for case in cases
+            if (mismatch := check_case(case, segmenters[case.source_type])) is not None
+        ]
     except MerismosError as error:
         typer.echo(f"error: {error}", err=True)
         raise typer.Exit(2) from error
-    mismatches = [
-        mismatch
-        for case in cases
-        if (mismatch := check_case(case, segmenters[case.source_type])) is not None
-    ]
     for mismatch in mismatches:
         typer.echo(mismatch.describe())
     typer.echo(f"{len(cases) - len(mismatches)} of {len(cases)} cases conform")

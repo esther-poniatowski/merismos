@@ -268,6 +268,7 @@ cases:
     gaps: [[16, 18], [21, 23], [25, 27]]
     attributes:
       callout: NOTE
+      fold: null
   - kind: display-math
     range: [18, 29]
     content: [20, 27]
@@ -285,11 +286,13 @@ cases:
     gaps: [[4, 6]]
     attributes:
       callout: null
+      fold: null
   - kind: quotation
     range: [6, 9]
     content: [8, 9]
     attributes:
       callout: null
+      fold: null
 - id: frontmatter-unclosed
   source: markdown
   observed: null
@@ -349,6 +352,7 @@ cases:
     content: [2, 7]
     attributes:
       callout: null
+      fold: null
 - id: inline-math-closing-after-space
   source: markdown
   observed: null
@@ -408,3 +412,134 @@ cases:
   - kind: inline-math
     range: [10, 13]
     content: [11, 12]
+- id: display-math-holds-list-marker
+  source: markdown
+  observed: null
+  note: A line inside display mathematics opens no block, whatever marker it starts with.
+  text: |
+    $$
+    a
+    + b
+    $$
+  regions:
+  - kind: display-math
+    range: [0, 11]
+    content: [2, 9]
+- id: display-math-holds-quotation-marker
+  source: markdown
+  observed: null
+  note: A line inside display mathematics opens no block, whatever marker it starts with.
+  text: |
+    $$
+    a
+    > 0
+    $$
+  regions:
+  - kind: display-math
+    range: [0, 11]
+    content: [2, 9]
+- id: display-math-holds-heading-marker
+  source: markdown
+  observed: null
+  note: A line inside display mathematics opens no block, whatever marker it starts with.
+  text: |
+    $$
+    a
+    # b
+    $$
+  regions:
+  - kind: display-math
+    range: [0, 11]
+    content: [2, 9]
+- id: unmatched-backtick-run
+  source: markdown
+  observed: null
+  note: A backtick run without a closing run of its width is literal as a whole.
+  text: '``foo`bar` baz'
+  regions:
+  - kind: inline-code
+    range: [5, 10]
+    content: [6, 9]
+- id: unmatched-backtick-run-alone
+  source: markdown
+  observed: null
+  note: No run of the width of the opening run closes it.
+  text: '``a` b'
+  regions: []
+- id: image-inside-link-text
+  source: markdown
+  observed: null
+  note: The text of a link may hold an embed, as a badge does.
+  text: '[![img](a.png)](b.md)'
+  regions:
+  - kind: link
+    range: [0, 21]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: false
+  - kind: link-text
+    range: [1, 14]
+    content: [1, 14]
+  - kind: link
+    range: [1, 14]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: true
+  - kind: link-text
+    range: [3, 6]
+    content: [3, 6]
+  - kind: link-destination
+    range: [8, 13]
+    content: [8, 13]
+  - kind: link-destination
+    range: [16, 20]
+    content: [16, 20]
+- id: escaped-destination-parenthesis
+  source: markdown
+  observed: null
+  note: An escaped parenthesis belongs to the destination.
+  text: '[a](b\)c)'
+  regions:
+  - kind: link
+    range: [0, 9]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: false
+  - kind: link-text
+    range: [1, 2]
+    content: [1, 2]
+  - kind: link-destination
+    range: [4, 8]
+    content: [4, 8]
+- id: escaped-wikilink-separator
+  source: markdown
+  observed: null
+  note: An escaped separator, as a table requires it, separates no alias.
+  text: '[[a\|b]]'
+  regions:
+  - kind: link
+    range: [0, 8]
+    content: null
+    attributes:
+      syntax: wiki
+      embed: false
+  - kind: link-destination
+    range: [2, 6]
+    content: [2, 6]
+- id: callout-fold-sign
+  source: markdown
+  observed: null
+  text: |
+    > [!tip]- T
+    > x
+  regions:
+  - kind: quotation
+    range: [0, 15]
+    content: [2, 15]
+    gaps: [[12, 14]]
+    attributes:
+      callout: tip
+      fold: '-'

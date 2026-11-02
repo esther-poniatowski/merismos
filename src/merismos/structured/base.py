@@ -34,7 +34,10 @@ class StructuredSegmenter(Generic[SyntaxT]):
         self._syntax = syntax
         self._source_type = source_type
 
+    kinds: frozenset[str] = frozenset()
+    """Kinds of the regions that the segmenter returns, declared by each subclass."""
+
     def _segmentation(self, source: str, regions: Iterable[Region]) -> Segmentation:
         """Build the segmentation of a source, its regions sorted by start."""
         ordered = sorted(regions, key=lambda region: region.range.start)
-        return Segmentation(source, self._source_type, tuple(ordered))
+        return Segmentation(source, self._source_type, tuple(ordered), self.kinds)

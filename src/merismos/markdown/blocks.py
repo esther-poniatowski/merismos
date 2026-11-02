@@ -25,13 +25,11 @@ from dataclasses import dataclass, field
 from itertools import count
 from typing import Iterator
 
+from ..lines import Cursor, Line, is_blank, split_lines
 from ..model import AttributeValue, Span
 from . import kinds
-from .lines import Cursor, Line, is_blank, split_lines
+from .inline import InlineScanner
 from .syntax import MarkdownSyntax
-
-QUOTATION_SPACING = 1
-"""Columns of space after a quotation marker that belong to the marker rather than the content."""
 
 
 @dataclass(frozen=True)
@@ -51,8 +49,8 @@ class Prefix:
     owner: int
 
 
-@dataclass
 # Each attribute is one field of a region, filled while the region stays open.
+@dataclass
 class BlockRegion:  # pylint: disable=too-many-instance-attributes
     """
     Region found by the scanner, with the containers enclosing it.
@@ -94,15 +92,12 @@ class InlineRun:
 
     Attributes
     ----------
-    identifier : int
-        Identifier of the run, in the sequence of the region identifiers.
     segments : tuple[Span, ...]
         Text of each line of the run, without its container prefixes.
     owners : tuple[int, ...]
         Identifiers of the containers enclosing the run.
     """
 
-    identifier: int
     segments: tuple[Span, ...]
     owners: tuple[int, ...]
 
@@ -119,15 +114,12 @@ class BlockScan:
     runs : tuple[InlineRun, ...]
         Runs of inline text.
     prefixes : tuple[Prefix, ...]
-        Container prefixes of every line.
-    next_identifier : int
-        First identifier left free for the regions found inside the runs.
+        Container prefixes of every line, in source order.
     """
 
     regions: tuple[BlockRegion, ...]
     runs: tuple[InlineRun, ...]
     prefixes: tuple[Prefix, ...]
-    next_identifier: int
 
 
 @dataclass
@@ -142,11 +134,16 @@ class _Container:
 
 @dataclass
 class _Paragraph:
-    """Open paragraph, collecting the text of its lines."""
+    """
+    Open paragraph, collecting the text of its lines.
 
-    identifier: int
+    While `in_display` holds, a display delimiter of the paragraph is still open, so its next lines
+    belong to the formula: they open no block, whatever marker they start with.
+    """
+
     segments: list[Span]
     owners: tuple[int, ...]
+    in_display: bool = False
 
 
 @dataclass
@@ -179,6 +176,7 @@ class BlockScanner:
 
     def __init__(self, syntax: MarkdownSyntax) -> None:
         self._syntax = syntax
+        self._inline = InlineScanner(syntax)
 
     def scan(self, source: str) -> BlockScan:
         """
@@ -189,15 +187,16 @@ class BlockScanner:
         BlockScan
             Block regions, inline runs and container prefixes of the source.
         """
-        return _Scan(self._syntax, source).run()
+        return _Scan(self._syntax, self._inline, source).run()
 
 
 # Each attribute is part of the state of one scan, discarded at its end.
 class _Scan:  # pylint: disable=too-many-instance-attributes
     """State of one scan, discarded once the source is read."""
 
-    def __init__(self, syntax: MarkdownSyntax, source: str) -> None:
+    def __init__(self, syntax: MarkdownSyntax, inline: InlineScanner, source: str) -> None:
         self.syntax = syntax
+        self.inline = inline
         self.source = source
         self.lines = split_lines(source)
         self.identifiers: Iterator[int] = count()
@@ -216,9 +215,7 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
             self._line(line)
         self._close_leaf()
         self._close_containers(0)
-        return BlockScan(
-            tuple(self.regions), tuple(self.runs), tuple(self.prefixes), next(self.identifiers)
-        )
+        return BlockScan(tuple(self.regions), tuple(self.runs), tuple(self.prefixes))
 
     def _region(
         self,
@@ -261,6 +258,9 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
         """Read one line: its container prefixes, an open block it continues, then new blocks."""
         cursor, matched, line_prefixes = self._match_containers(line)
         all_matched = matched == len(self.stack)
+        if isinstance(self.leaf, _Paragraph) and self.leaf.in_display:
+            if self._display_line(self.leaf, line, cursor, line_prefixes):
+                return
         if isinstance(self.leaf, _Fence):
             if all_matched and self._fence_line(self.leaf, line, cursor, line_prefixes):
                 return
@@ -277,7 +277,7 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
             and not self._opens_block(cursor, line)
         ):
             # A lazy continuation line keeps every container open without its prefix.
-            self.leaf.segments.append(Span(cursor.position, line.end))
+            self._extend_paragraph(self.leaf, Span(cursor.position, line.end))
             self._keep(line_prefixes, line, self.stack)
             return
         if not all_matched:
@@ -341,9 +341,7 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
         ):
             return None
         after = Cursor(start.position + len(syntax.marker), start.column + len(syntax.marker))
-        spaced = after.consume_columns(
-            self.source, line.end, QUOTATION_SPACING, self.syntax.tab_width
-        )
+        spaced = after.consume_columns(self.source, line.end, syntax.spacing, self.syntax.tab_width)
         return spaced if spaced is not None else after
 
     def _list_marker(self, cursor: Cursor, line: Line) -> tuple[Cursor, int] | None:
@@ -390,9 +388,14 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
                 self._close_leaf()
                 marker = self._block_start(cursor, line)
                 assert marker is not None
-                callout = self._callout(after, line)
+                callout, fold = self._callout(after, line)
                 region = self._region(
-                    kinds.QUOTATION, marker.position, after.position, own=True, callout=callout
+                    kinds.QUOTATION,
+                    marker.position,
+                    after.position,
+                    own=True,
+                    callout=callout,
+                    fold=fold,
                 )
                 self.stack.append(_Container(region.identifier, region, 0, line.end))
                 cursor = after
@@ -409,17 +412,23 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
                 continue
             return cursor
 
-    def _callout(self, cursor: Cursor, line: Line) -> str | None:
-        """Return the type of the callout opened by the first line of a quotation, if any."""
+    def _callout(self, cursor: Cursor, line: Line) -> tuple[str | None, str | None]:
+        """Return the type and the fold sign of the callout opening a quotation, or Nones."""
         quotations = self.syntax.quotations
         syntax = quotations.callout if quotations is not None else None
         if syntax is None or not self.source.startswith(syntax.opening, cursor.position):
-            return None
+            return None, None
         start = cursor.position + len(syntax.opening)
         match = syntax.type_pattern.match(self.source, start, line.end)
         if match is None or not self.source.startswith(syntax.closing, match.end()):
-            return None
-        return match.group(0)
+            return None, None
+        after = match.end() + len(syntax.closing)
+        fold = (
+            self.source[after]
+            if after < line.end and self.source[after] in syntax.fold_signs
+            else None
+        )
+        return match.group(0), fold
 
     def _close_containers(self, keep: int) -> None:
         """Close the containers above the first `keep` ones."""
@@ -477,7 +486,7 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
         region = self._region(kinds.HEADING, start, content.start, own=False, level=level)
         region.end, region.content_end = line.end, content.end
         owners = tuple(container.identifier for container in self.stack)
-        self.runs.append(InlineRun(next(self.identifiers), (content,), owners))
+        self.runs.append(InlineRun((content,), owners))
         return True
 
     def _fence_opening_line(self, cursor: Cursor, line: Line) -> bool:
@@ -493,18 +502,40 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
 
     def _paragraph_line(self, cursor: Cursor, line: Line) -> None:
         """Add a line to the open paragraph, or open a paragraph with it."""
-        if isinstance(self.leaf, _Paragraph):
-            self.leaf.segments.append(Span(cursor.position, line.end))
-            return
-        owners = tuple(container.identifier for container in self.stack)
-        self.leaf = _Paragraph(next(self.identifiers), [Span(cursor.position, line.end)], owners)
+        if not isinstance(self.leaf, _Paragraph):
+            self.leaf = _Paragraph([], tuple(container.identifier for container in self.stack))
+        self._extend_paragraph(self.leaf, Span(cursor.position, line.end))
+
+    def _extend_paragraph(self, paragraph: _Paragraph, segment: Span) -> None:
+        """Add a line to a paragraph, and record whether it leaves a display delimiter open."""
+        paragraph.segments.append(segment)
+        text = self.source[segment.start : segment.end]
+        if paragraph.in_display:
+            closing = self.inline.display_closing(text)
+            if closing is None:
+                return
+            text = text[closing:]
+        paragraph.in_display = self.inline.opens_display_math(text)
+
+    def _display_line(
+        self, paragraph: _Paragraph, line: Line, cursor: Cursor, line_prefixes: list[Prefix]
+    ) -> bool:
+        """Give a line to the open display formula of a paragraph, returning whether it takes it."""
+        math = self.syntax.math
+        blank = is_blank(self.source, cursor.position, line.end)
+        if blank and not (math is not None and math.display_spans_blank_lines):
+            return False
+        # The line continues the formula: it opens no block, and keeps every container open.
+        self._extend_paragraph(paragraph, Span(cursor.position, line.end))
+        self._keep(line_prefixes, line, self.stack)
+        return True
 
     def _close_leaf(self) -> None:
         """Close the open leaf block, recording its run or the end of its region."""
         leaf = self.leaf
         self.leaf = None
         if isinstance(leaf, _Paragraph):
-            self.runs.append(InlineRun(leaf.identifier, tuple(leaf.segments), leaf.owners))
+            self.runs.append(InlineRun(tuple(leaf.segments), leaf.owners))
         elif isinstance(leaf, _Fence):
             # A fence never closed runs to the end of its last line.
             leaf.region.end = leaf.last_end
@@ -586,7 +617,7 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
         length = end - position
         info = self.source[end : line.end].strip(" \t")
         if length < syntax.minimum_length or (
-            character == self.syntax.code_span and character in info
+            character in syntax.info_excludes_fence and character in info
         ):
             return None
         return position, character, length, info
