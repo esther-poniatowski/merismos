@@ -88,6 +88,23 @@ def test_wrong_version_is_rejected() -> None:
         read_syntax_document("syntax_version: 2\nsource_type: markdown\nname: x\n", "inline")
 
 
+def test_wikilink_without_excluded_characters_admits_a_bracket(tmp_path: Path) -> None:
+    import yaml
+
+    data = yaml.safe_load(_syntax_file(tmp_path, {}).read_text(encoding="utf-8"))
+    del data["links"]["wikilink"]["excluded"]
+    path = tmp_path / "plain.yml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    segmentation = segment("[[a](b)]]", "markdown", path)
+    destinations = [segmentation.text(r.content) for r in segmentation.select(["link-destination"])]
+    assert destinations == ["a](b)"]
+
+
+def test_excluded_bracket_opens_no_wikilink() -> None:
+    segmentation = segment("[[a](b)]]", "markdown")
+    assert [r.attributes.get("syntax") for r in segmentation.select(["link"])] == ["markdown"]
+
+
 def test_null_section_disables_its_construct(tmp_path: Path) -> None:
     path = _syntax_file(tmp_path, {"math": None})
     regions = default_registry().segmenter("markdown", path).segment("Let $x$ vary.")

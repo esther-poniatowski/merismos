@@ -88,7 +88,7 @@ Merismos reads each construct as Obsidian reads it. Under the [packaged Obsidian
 - **Headings** open with one to six `#`, followed by a space, a tab or the line ending. At most three spaces may precede the marker. The content excludes the optional closing run of `#` and its surrounding spaces, as in CommonMark [macfarlane2024]. Therefore, `#tag` opens no heading.
 - **Thematic breaks and setext underlines** end a paragraph and form no region. A line of separated dashes is a thematic break, not a list item.
 - **Callouts**: a quotation is a callout when its first line opens with `[!type]`. A `+` or a `-` right after the closing bracket is its fold sign.
-- **Links** take the Markdown form `[text](destination "title")` and the wiki forms `[[destination]]` and `[[destination|text]]`. Each form has an embed, opened by `!`. The title of a Markdown link belongs to neither child region, and a wikilink without an alias has no link text.
+- **Links** take the Markdown form `[text](destination "title")` and the wiki forms `[[destination]]` and `[[destination|text]]`. Each form has an embed, opened by `!`. The title of a Markdown link belongs to neither child region, and a wikilink without an alias has no link text. A wikilink destination holds none of the characters excluded by the syntax, the brackets in Obsidian, so `[[a](b)]]` holds a Markdown link and no wikilink.
 
 ## Kinds of the structured sources
 

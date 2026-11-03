@@ -238,6 +238,24 @@ cases:
   - kind: link-destination
     range: [2, 14]
     content: [2, 14]
+- id: wikilink-destination-with-bracket
+  source: markdown
+  observed: null
+  note: A wikilink destination holds no bracket, so the brackets open a Markdown link instead.
+  text: '[[a](b)]]'
+  regions:
+  - kind: link
+    range: [1, 7]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: false
+  - kind: link-text
+    range: [2, 3]
+    content: [2, 3]
+  - kind: link-destination
+    range: [5, 6]
+    content: [5, 6]
 - id: wikilink-embed
   source: markdown
   observed: null

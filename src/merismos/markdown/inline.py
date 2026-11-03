@@ -396,13 +396,18 @@ class _Scan:
         separator = next_occurrence(
             self._index.wiki_separators, inner, closing, len(syntax.alias_separator)
         )
+        destination = Span(inner, closing if separator is None else separator)
+        if syntax.excluded and any(
+            character in syntax.excluded
+            for character in self._text[destination.start : destination.end]
+        ):
+            return None
         node = InlineNode(
             kinds.LINK,
             Span(position, closing + len(syntax.closing)),
             None,
             {"syntax": "wiki", "embed": opening != position},
         )
-        destination = Span(inner, closing if separator is None else separator)
         node.children.append(InlineNode(kinds.LINK_DESTINATION, destination, destination))
         if separator is not None:
             alias = Span(separator + len(syntax.alias_separator), closing)

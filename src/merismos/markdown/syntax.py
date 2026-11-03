@@ -109,11 +109,20 @@ class MathSyntax:
 
 @dataclass(frozen=True)
 class WikilinkSyntax:
-    """Wikilink: `opening`, a destination, an optional alias after `alias_separator`, `closing`."""
+    """
+    Wikilink: `opening`, a destination, an optional alias after `alias_separator`, `closing`.
+
+    Attributes
+    ----------
+    excluded : str
+        Characters that a destination cannot hold, so that an opening followed by one of them
+        before its closing opens no wikilink.
+    """
 
     opening: str
     closing: str
     alias_separator: str
+    excluded: str = ""
 
 
 @dataclass(frozen=True)
@@ -285,6 +294,7 @@ def _links(fields: Fields | None, name: str) -> LinkSyntax | None:
             opening=wiki_fields.string("opening"),
             closing=wiki_fields.string("closing"),
             alias_separator=wiki_fields.string("alias_separator"),
+            excluded=wiki_fields.optional_string("excluded") or "",
         )
         wiki_fields.finish()
     links = LinkSyntax(

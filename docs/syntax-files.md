@@ -46,7 +46,7 @@ A section of a Markdown syntax describes one construct, and a section set to `nu
 | `math.display_spans_blank_lines` | whether a blank line inside display mathematics keeps it open | false |
 | `links.markdown` | `text_opening`, `text_closing`, `destination_opening`, `destination_closing`, `destination_brackets` (two characters) and `title_delimiters` (pairs of characters) of a Markdown link, or `null` | `[`, `]`, `(`, `)`; `<` and `>`; `""`, `''` and `()` |
 | `links.embeds_in_text` | whether the text of a Markdown link may hold embeds | true |
-| `links.wikilink` | `opening`, `closing` and `alias_separator` of a wikilink, or `null` | `[[`, `]]`, `|` |
+| `links.wikilink` | `opening`, `closing` and `alias_separator` of a wikilink, and the optional `excluded`, the characters that its destination cannot hold; or `null` | `[[`, `]]`, `|`; `[]` |
 | `links.embed_prefix` | prefix turning a link into an embed, or `null` | `!` |
 | `escape.character`, `escape.escapable` | escape character, and the characters it escapes | `\`, the ASCII punctuation |
 

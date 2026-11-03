@@ -73,6 +73,8 @@ links:
     opening: "[["
     closing: "]]"
     alias_separator: "|"
+    # Obsidian links no file whose name holds a bracket, so `[[a](b)]]` holds no wikilink.
+    excluded: "[]"
   embed_prefix: "!"
 
 escape:
