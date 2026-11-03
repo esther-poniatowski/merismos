@@ -1,9 +1,9 @@
 ---
 tags:
   - decision
-status: proposed
+status: accepted
 created: 2026-11-02
-revised: 2026-11-02
+revised: 2026-11-03
 index: "[Architecture decisions](docs/adr/_index.md)"
 aliases:
   - Segmentation contract decision

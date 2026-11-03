@@ -23,7 +23,7 @@ Merismos removes both limitations, since one library defines the regions for eve
 
 ### Status
 
-Pre-alpha. The package segments the four shipped source types. Its [conformance cases for Markdown](specs/conformance/markdown.yml) await their observation in Obsidian. The [segmentation decision](docs/adr/segmentation-contract.md) is still proposed.
+Pre-alpha. The package segments the four shipped source types. Its [conformance cases for Markdown](specs/conformance/markdown.yml) await their observation in Obsidian. The [segmentation decision](docs/adr/segmentation-contract.md) is accepted.
 
 ---
 
