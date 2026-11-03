@@ -52,7 +52,7 @@ where = ["src"]
 
 # The syntax files shipped with the package, read at run time through importlib.resources.
 [tool.setuptools.package-data]
-merismos = ["syntaxes/*.yml"]
+merismos = ["syntaxes/*.yml", "py.typed"]
 
 # --- CLI Entry Points -----------------------------------------------------------------------------
 
