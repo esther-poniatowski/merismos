@@ -34,3 +34,7 @@ htmlcov/
 
 ## Documentation Build
 docs/_build/
+
+## Agent workspaces
+.agent-work/
+.agent-tmp/
