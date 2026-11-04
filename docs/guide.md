@@ -109,7 +109,7 @@ Merismos follows the reading of Obsidian, and a case becomes binding once it is 
 merismos observe specs/conformance/markdown.yml .agent-work/obsidian-observation
 ```
 
-The folder `.agent-work/` lies under the root of the repository and is ignored by Git, so the vault stays reachable from the folder dialog of Obsidian, and survives a restart, which empties a system temporary directory.
+The folder `.agent-work/` lies under the root of the repository, and Git ignores it. Unlike a system temporary directory, the folder is reachable from the folder dialog of Obsidian and survives a restart.
 
 The observation then takes four steps:
 
