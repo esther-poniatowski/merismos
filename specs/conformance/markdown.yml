@@ -760,7 +760,7 @@ cases:
       level: 1
 - id: display-math-unclosed-with-content
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: An unclosed display delimiter opening a line runs to the end of its container, even when content
     follows it on its line.
   text: |

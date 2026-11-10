@@ -24,4 +24,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The syntax keys `code_span_shorter_closing`, `code_span_over_links`,
   `math.display_unclosed_runs_to_end` and `links.wikilink.escaped_separator`, which keep the
   CommonMark readings available.
-- Fourteen Markdown cases, one of them awaiting observation.
+- Fourteen Markdown cases.
