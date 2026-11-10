@@ -281,25 +281,40 @@ class InlineScanner:
         occurrences = RunIndex(text, self._syntax).display
         return occurrences[0] + len(math.display) if occurrences else None
 
-    def opens_display_math(self, text: str) -> bool:
-        """Whether a run leaves a display delimiter open, so that the next lines continue it."""
+    def open_display(self, text: str, line_start: bool = True) -> tuple[bool, bool]:
+        """
+        Whether a run leaves a display delimiter open, and whether that delimiter, opening a line,
+        opens a formula running to the end of its container.
+
+        `line_start` states whether the run opens at the start of a line.
+        """
         math = self._syntax.math
         if math is None or math.display is None:
-            return False
-        scan = _Scan(self._syntax, RunIndex(text, self._syntax))
+            return False, False
+        scan = _Scan(self._syntax, RunIndex(text, self._syntax), line_start)
         scan.scan(0, len(text), LinkMode.ALL)
-        return scan.unclosed_display
+        return scan.unclosed_display, scan.running_display
 
 
 class _Scan:
     """Scan of one run, reading the delimiters from its index."""
 
-    def __init__(self, syntax: MarkdownSyntax, index: RunIndex) -> None:
+    def __init__(self, syntax: MarkdownSyntax, index: RunIndex, line_start: bool = True) -> None:
         self._syntax = syntax
         self._index = index
         self._text = index.text
+        self._line_start = line_start
         #: Whether the scan met a display delimiter that no later delimiter of the run closes.
         self.unclosed_display = False
+        #: Whether that delimiter, opening a line, opens a formula running to the end of the run.
+        self.running_display = False
+
+    def _opens_line(self, position: int) -> bool:
+        """Whether only spaces and tabs precede `position` on its line of the run."""
+        start = self._text.rfind(RUN_LINE_BREAK, 0, position) + 1
+        if not start and not self._line_start:
+            return False
+        return not self._text[start:position].strip(" \t")
 
     def scan(self, start: int, end: int, links: LinkMode) -> list[InlineNode]:
         """Scan the text between two positions, admitting the links of the given mode."""
@@ -370,10 +385,11 @@ class _Scan:
         width = len(math.display)
         closing = next_occurrence(self._index.display, position + width, end, width)
         if closing is None:
-            if not math.display_unclosed_runs_to_end:
+            if not (math.display_unclosed_runs_to_end and self._opens_line(position)):
                 return None
-            # An unclosed formula runs to the end of the run, whose paragraph it keeps open.
-            self.unclosed_display = True
+            # An unclosed formula opening a line runs to the end of the run, whose paragraph it
+            # keeps open.
+            self.unclosed_display = self.running_display = True
             return InlineNode(kinds.DISPLAY_MATH, Span(position, end), Span(position + width, end))
         return InlineNode(
             kinds.DISPLAY_MATH, Span(position, closing + width), Span(position + width, closing)

@@ -64,8 +64,9 @@ math:
   inline_spans_lines: false
   # Whether a blank line inside display mathematics keeps it open, as observed in Obsidian 1.15.0.
   display_spans_blank_lines: true
-  # Whether an unclosed display delimiter opens a formula running to the end of its container, as
-  # observed in Obsidian 1.15.0 for a delimiter alone on its line.
+  # Whether an unclosed display delimiter opening a line opens a formula running to the end of its
+  # container; observed in Obsidian 1.15.0 for a delimiter alone on its line, whereas a delimiter
+  # left open inside a sentence stays literal.
   display_unclosed_runs_to_end: true
 
 links:

@@ -723,8 +723,8 @@ cases:
 - id: display-math-unclosed
   source: markdown
   observed: 1.15.0
-  note: An unclosed display delimiter opens a formula running to the end of its container, blank lines
-    and block markers included.
+  note: An unclosed display delimiter opening a line opens a formula running to the end of its container,
+    blank lines and block markers included.
   text: |
     $$
     a
@@ -746,13 +746,28 @@ cases:
     content: [1, 7]
 - id: display-math-unclosed-in-paragraph
   source: markdown
-  observed: null
-  note: An unclosed display delimiter inside a sentence opens a formula running to the end of its container.
+  observed: 1.15.0
+  note: An unclosed display delimiter inside a sentence stays literal.
   text: |
     Cost $$5 here.
 
     # H
   regions:
+  - kind: heading
+    range: [16, 19]
+    content: [18, 19]
+    attributes:
+      level: 1
+- id: display-math-unclosed-with-content
+  source: markdown
+  observed: null
+  note: An unclosed display delimiter opening a line runs to the end of its container, even when content
+    follows it on its line.
+  text: |
+    $$a
+
+    # H
+  regions:
   - kind: display-math
-    range: [5, 19]
-    content: [7, 19]
+    range: [0, 8]
+    content: [2, 8]

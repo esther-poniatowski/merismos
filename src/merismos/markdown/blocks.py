@@ -510,24 +510,28 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
         """Add a line to a paragraph, and record whether it leaves a display delimiter open."""
         paragraph.segments.append(segment)
         text = self.source[segment.start : segment.end]
+        line_start = True
         if paragraph.in_display:
             closing = self.inline.display_closing(text)
             if closing is None:
                 return
-            text = text[closing:]
-        paragraph.in_display = self.inline.opens_display_math(text) and self._may_close(segment.end)
+            text, line_start = text[closing:], False
+        is_open, running = self.inline.open_display(text, line_start)
+        paragraph.in_display = is_open and (running or self._may_close(segment.end))
 
     def _may_close(self, position: int) -> bool:
         """Whether a display delimiter left open at `position` continues the paragraph.
 
-        Where an unclosed formula runs to the end of its container, every open delimiter
-        continues it. Otherwise, an unclosed delimiter is literal, so it continues the paragraph
-        only when a later display delimiter of the source may close it.
+        A delimiter left open without running to the end of its container is literal unless
+        closed, so it continues the paragraph only when a later display delimiter of the source
+        may close it.
         """
         math = self.syntax.math
-        if math is None or math.display is None or math.display_unclosed_runs_to_end:
-            return True
-        return self.source.find(math.display, position) != -1
+        return (
+            math is not None
+            and math.display is not None
+            and (self.source.find(math.display, position) != -1)
+        )
 
     def _display_line(
         self, paragraph: _Paragraph, line: Line, cursor: Cursor, line_prefixes: list[Prefix]

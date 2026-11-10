@@ -46,7 +46,7 @@ A section of a Markdown syntax describes one construct, and a section set to `nu
 | `math.display`, `math.inline` | delimiters of display and inline mathematics, each possibly `null` | `$$`, `$` |
 | `math.inline_spans_lines` | whether inline mathematics may cross a line break | false |
 | `math.display_spans_blank_lines` | whether a blank line inside display mathematics keeps it open | true |
-| `math.display_unclosed_runs_to_end` | whether an unclosed display delimiter opens a formula running to the end of its container; when false, the delimiter is literal | true |
+| `math.display_unclosed_runs_to_end` | whether an unclosed display delimiter opening a line opens a formula running to the end of its container; an unclosed delimiter elsewhere, or every unclosed delimiter when false, is literal | true |
 | `links.markdown` | `text_opening`, `text_closing`, `destination_opening`, `destination_closing`, `destination_brackets` (two characters) and `title_delimiters` (pairs of characters) of a Markdown link, or `null` | `[`, `]`, `(`, `)`; `<` and `>`; `""`, `''` and `()` |
 | `links.embeds_in_text` | whether the text of a Markdown link may hold embeds | true |
 | `links.wikilink` | `opening`, `closing` and `alias_separator` of a wikilink, `escaped_separator`, whether an escaped separator still separates the alias, and the optional `excluded`, the characters that its destination cannot hold; or `null` | `[[`, `]]`, `|`; true; none |
