@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - a code span inside the text of a link holds its brackets;
   - a blank line keeps display mathematics open, and an unclosed display delimiter opening a
     line opens a formula running to the end of its container.
+- The command `merismos observe` names the folder of the vault by the option `--output-dir`,
+  which replaces the second positional argument. It replaces an existing checklist, which may
+  hold ticked cases, only with the new option `--force`, and otherwise exits 2 without writing.
 
 ### Added
 

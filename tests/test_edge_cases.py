@@ -197,7 +197,8 @@ def test_pathological_sources_segment_quickly(text: str) -> None:
 
 def test_observation_vault_holds_each_case_text_verbatim(tmp_path: Path) -> None:
     cases_file = Path(__file__).resolve().parent.parent / "specs" / "conformance" / "markdown.yml"
-    result = CliRunner().invoke(app, ["observe", str(cases_file), str(tmp_path / "vault")])
+    vault = ["observe", str(cases_file), "--output-dir", str(tmp_path / "vault")]
+    result = CliRunner().invoke(app, vault)
     assert result.exit_code == 0
     for case in load_cases(cases_file):
         note = tmp_path / "vault" / "cases" / f"{case.identifier}.md"
@@ -205,3 +206,29 @@ def test_observation_vault_holds_each_case_text_verbatim(tmp_path: Path) -> None
     checklist = (tmp_path / "vault" / "_checklist.md").read_text(encoding="utf-8")
     assert "- [ ] [[cases/inline-math-basic|inline-math-basic]]" in checklist
     assert "inline-math: `x_i`" in checklist
+
+
+def test_observation_keeps_a_ticked_checklist_without_force(tmp_path: Path) -> None:
+    """The checklist is ticked by the reader: replacing it needs --force; the notes are derived."""
+    cases_file = Path(__file__).resolve().parent.parent / "specs" / "conformance" / "markdown.yml"
+    vault = ["observe", str(cases_file), "--output-dir", str(tmp_path / "vault")]
+    runner = CliRunner()
+    assert runner.invoke(app, vault).exit_code == 0
+    checklist = tmp_path / "vault" / "_checklist.md"
+    checklist.write_text("- [x] ticked\n", encoding="utf-8")
+    refused = runner.invoke(app, vault)
+    assert refused.exit_code == 2
+    assert str(checklist) in refused.output.replace("\n", "")
+    assert checklist.read_text(encoding="utf-8") == "- [x] ticked\n"
+    assert runner.invoke(app, [*vault, "--force"]).exit_code == 0
+    assert "- [ ] [[cases/inline-math-basic|inline-math-basic]]" in checklist.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_observation_folder_is_no_longer_positional(tmp_path: Path) -> None:
+    """The folder of the vault is named by --output-dir, without a positional alias."""
+    cases_file = Path(__file__).resolve().parent.parent / "specs" / "conformance" / "markdown.yml"
+    result = CliRunner().invoke(app, ["observe", str(cases_file), str(tmp_path / "vault")])
+    assert result.exit_code == 2
+    assert not (tmp_path / "vault").exists()

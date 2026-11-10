@@ -11,7 +11,7 @@ Functions
 ---------
 expected_reading(case) -> list[str]
     State the expected regions of a case in words, one line per region.
-export_vault(cases, folder) -> Path
+export_vault(cases, folder, force) -> Path
     Write the notes of the cases and their checklist into a folder.
 """
 
@@ -71,9 +71,12 @@ def _inline(text: str) -> str:
     return text.replace("\r", "\\r").replace("\n", "\\n").replace("`", "ˋ")
 
 
-def export_vault(cases: Sequence[Case], folder: Path) -> Path:
+def export_vault(cases: Sequence[Case], folder: Path, force: bool = False) -> Path:
     """
     Write the notes of the cases and their checklist into a folder.
+
+    The notes are derived from the cases and are replaced freely. The checklist is ticked by the
+    reader, so an existing checklist is replaced only when `force` is set.
 
     Parameters
     ----------
@@ -81,6 +84,8 @@ def export_vault(cases: Sequence[Case], folder: Path) -> Path:
         Cases to observe, those of one source type read by Obsidian.
     folder : Path
         Folder of the vault, created when absent; existing notes of the same names are replaced.
+    force : bool, default False
+        Whether to replace an existing checklist.
 
     Returns
     -------
@@ -90,14 +95,21 @@ def export_vault(cases: Sequence[Case], folder: Path) -> Path:
     Raises
     ------
     MerismosError
-        If a case is not a Markdown case, which Obsidian cannot render.
+        If a case is not a Markdown case, which Obsidian cannot render, or if the checklist exists
+        and `force` is not set; nothing is written in either case.
     """
+    for case in cases:
+        if case.source_type != "markdown":
+            raise MerismosError(f"case {case.identifier}: only Markdown cases render in Obsidian")
+    checklist = folder / CHECKLIST
+    if checklist.exists() and not force:
+        raise MerismosError(
+            f"{checklist} exists and may hold ticked cases; replace it with --force"
+        )
     notes = folder / NOTES
     notes.mkdir(parents=True, exist_ok=True)
     entries: list[str] = []
     for case in cases:
-        if case.source_type != "markdown":
-            raise MerismosError(f"case {case.identifier}: only Markdown cases render in Obsidian")
         # The note holds the text alone, written without newline translation, so that its
         # frontmatter, its line endings and its first line are those of the case.
         with (notes / f"{case.identifier}.md").open("w", encoding="utf-8", newline="") as handle:
@@ -108,7 +120,6 @@ def export_vault(cases: Sequence[Case], folder: Path) -> Path:
         if case.note:
             entries.append(f"    - {case.note}")
         entries.extend(f"    - {line}" for line in reading)
-    checklist = folder / CHECKLIST
     checklist.write_text(
         "# Conformance cases to observe\n\n"
         "Open each case in the reading view, and tick it when Obsidian renders every region listed "

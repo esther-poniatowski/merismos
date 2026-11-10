@@ -95,11 +95,20 @@ def cli_conform(
 @app.command("observe")
 def cli_observe(
     cases_path: Path = typer.Argument(..., help="Conformance file of Markdown cases."),
-    folder: Path = typer.Argument(..., help="Folder of the observation vault to write."),
+    folder: Path = typer.Option(
+        ..., "--output-dir", help="Folder of the observation vault to write."
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Replace an existing checklist, which may hold ticked cases."
+    ),
 ) -> None:
-    """Write the Markdown cases as notes, with a checklist, to compare them in Obsidian."""
+    """Write the Markdown cases as notes, with a checklist, to compare them in Obsidian.
+
+    The notes are replaced freely; an existing checklist is replaced only with `--force`, and
+    otherwise the command exits 2 without writing.
+    """
     try:
-        checklist = export_vault(load_cases(cases_path), folder)
+        checklist = export_vault(load_cases(cases_path), folder, force)
     except (MerismosError, OSError) as error:
         typer.echo(f"error: {error}", err=True)
         raise typer.Exit(2) from error

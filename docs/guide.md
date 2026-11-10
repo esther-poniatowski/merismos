@@ -106,8 +106,10 @@ Each mismatch is reported as the first differing region of its case, and the las
 Merismos follows the reading of Obsidian, and a case becomes binding once it is observed there. The command `merismos observe` writes an observation vault: one note per Markdown case, holding exactly the text of the case, and a checklist stating the expected reading of each case:
 
 ```console
-merismos observe specs/conformance/markdown.yml .agent-work/obsidian-observation
+merismos observe specs/conformance/markdown.yml --output-dir .agent-work/obsidian-observation
 ```
+
+A second run replaces the notes, which derive from the cases. It stops with exit status 2 when the folder already holds a checklist, since the checklist may hold ticked cases; the option `--force` replaces it.
 
 The folder `.agent-work/` lies under the root of the repository, and Git ignores it. Unlike a system temporary directory, the folder is reachable from the folder dialog of Obsidian and survives a restart.
 
