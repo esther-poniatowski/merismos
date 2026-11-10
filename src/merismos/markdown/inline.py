@@ -3,8 +3,12 @@ Inline scanner: code spans, mathematics and links inside the text of a paragraph
 
 The scanner reads one run of text, its container prefixes removed, from left to right. A
 construct opened first takes precedence over the constructs opening inside it, and no construct
-opens inside an opaque one. One exception holds, as in CommonMark: a code span takes precedence
-over a link, so a closing bracket inside a code span closes no link text.
+opens inside an opaque one. A syntax may state one exception, as CommonMark does: a code span
+takes precedence over a link, so a closing bracket inside a code span closes no link text.
+
+A code span closes at the next run of its delimiter as wide as its opening run. A syntax may also
+let the first narrower run close it when no run as wide follows, the excess delimiters of the
+opening run then staying literal.
 
 Before scanning, one pass over the run builds an index of its escapes, its backtick runs, its
 matched brackets and the positions of each delimiter. Every search for a closing delimiter is
@@ -114,12 +118,14 @@ class RunIndex:  # pylint: disable=too-many-instance-attributes
         wikilink = links.wikilink if links is not None else None
         self.wiki_closings = self._occurrences(wikilink.closing) if wikilink is not None else []
         self.wiki_separators = (
-            self._occurrences(wikilink.alias_separator) if wikilink is not None else []
+            self._occurrences(wikilink.alias_separator, wikilink.escaped_separator)
+            if wikilink is not None
+            else []
         )
+        self._shorter_closing = syntax.code_span_shorter_closing
         markdown = links.markdown if links is not None else None
-        self.brackets = (
-            self._match_brackets(markdown, syntax.code_span) if markdown is not None else {}
-        )
+        prevailing = syntax.code_span if syntax.code_span_over_links else None
+        self.brackets = self._match_brackets(markdown, prevailing) if markdown is not None else {}
 
     def _index_runs(self, delimiter: str) -> None:
         """Record the start of each maximal run of the code-span delimiter, by width."""
@@ -132,12 +138,13 @@ class RunIndex:  # pylint: disable=too-many-instance-attributes
             else:
                 position += 1
 
-    def _occurrences(self, delimiter: str) -> list[int]:
-        """Unescaped, non-overlapping occurrences of a delimiter, from left to right."""
+    def _occurrences(self, delimiter: str, escaped: bool = False) -> list[int]:
+        """Non-overlapping occurrences of a delimiter, from left to right, the escaped ones only
+        when `escaped` admits them."""
         found: list[int] = []
         position = self.text.find(delimiter)
         while position != -1:
-            if position in self.escaped:
+            if position in self.escaped and not escaped:
                 position = self.text.find(delimiter, position + 1)
                 continue
             found.append(position)
@@ -165,7 +172,7 @@ class RunIndex:  # pylint: disable=too-many-instance-attributes
             elif code_span is not None and character == code_span:
                 width = run_length(text, position, len(text), code_span)
                 closing = self.code_span_closing(position, width, len(text))
-                position = position + width if closing is None else closing + width
+                position = position + width if closing is None else closing[0] + closing[1]
             else:
                 if character == syntax.text_opening:
                     stack.append(position)
@@ -174,10 +181,29 @@ class RunIndex:  # pylint: disable=too-many-instance-attributes
                 position += 1
         return matches
 
-    def code_span_closing(self, position: int, width: int, end: int) -> int | None:
-        """Start of the first maximal run of `width` delimiters after the run at `position`."""
-        closing = _first_at_or_after(self._runs_by_width.get(width, []), position + width)
-        return closing if closing is not None and closing + width <= end else None
+    def code_span_closing(self, position: int, width: int, end: int) -> tuple[int, int] | None:
+        """
+        Start and width of the run closing a code span opened by the run at `position`: the first
+        maximal run of `width` delimiters after it, or, when none follows and the syntax admits
+        narrower closings, the first maximal run of fewer delimiters.
+        """
+        same = _first_at_or_after(self._runs_by_width.get(width, []), position + width)
+        if same is not None and same + width <= end:
+            return same, width
+        if not self._shorter_closing:
+            return None
+        found = [
+            (closing, candidate)
+            for candidate in range(1, width)
+            if (
+                closing := _first_at_or_after(
+                    self._runs_by_width.get(candidate, []), position + width
+                )
+            )
+            is not None
+            and closing + candidate <= end
+        ]
+        return min(found) if found else None
 
     def next_line_break(self, position: int) -> int:
         """Position of the first line break at or after `position`, or the length of the run."""
@@ -311,11 +337,15 @@ class _Scan:
         if delimiter is None or self._text[position] != delimiter:
             return None
         width = run_length(self._text, position, end, delimiter)
-        closing = self._index.code_span_closing(position, width, end)
-        if closing is None:
+        found = self._index.code_span_closing(position, width, end)
+        if found is None:
             return None
+        closing, closing_width = found
+        # The opening keeps as many delimiters as the closing run holds, the others staying literal.
         return InlineNode(
-            kinds.INLINE_CODE, Span(position, closing + width), Span(position + width, closing)
+            kinds.INLINE_CODE,
+            Span(position + width - closing_width, closing + closing_width),
+            Span(position + width, closing),
         )
 
     def _display_math(self, position: int, end: int) -> InlineNode | None:
@@ -396,7 +426,7 @@ class _Scan:
         separator = next_occurrence(
             self._index.wiki_separators, inner, closing, len(syntax.alias_separator)
         )
-        destination = Span(inner, closing if separator is None else separator)
+        destination = self._wiki_destination(inner, closing, separator)
         if syntax.excluded and any(
             character in syntax.excluded
             for character in self._text[destination.start : destination.end]
@@ -414,6 +444,13 @@ class _Scan:
             children = self.scan(alias.start, alias.end, LinkMode.NONE)
             node.children.append(InlineNode(kinds.LINK_TEXT, alias, alias, children=children))
         return node
+
+    def _wiki_destination(self, inner: int, closing: int, separator: int | None) -> Span:
+        """Return the destination of a wikilink, up to its separator or its closing; an escaped
+        separator separates too, its escape character left out of the destination."""
+        if separator is None:
+            return Span(inner, closing)
+        return Span(inner, separator - 1 if separator in self._index.escaped else separator)
 
     def _markdown_link(self, position: int, end: int, mode: LinkMode) -> InlineNode | None:
         """Recognize a Markdown link, possibly an embed, opening at `position`."""

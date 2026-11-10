@@ -138,7 +138,7 @@ Merismos consumes no contract, so the graph of contracts places it first. The pr
 ## Open points
 
 - The conformance cases of the YAML, Python and commit sources, beside the tests of their decoders.
-- Observing each Markdown case in Obsidian, and whether a blank line closes display mathematics there.
+- Observing the cases left open by the observation of Obsidian 1.15.0, each marked by a null `observed` in the conformance file.
 - Mathematics written between two different delimiters, such as `\(` and `\)`. The syntax declares one inline delimiter, and that delimiter both opens and closes the formula.
 
 Seven constructs are not yet kinds, and each awaits a decision:

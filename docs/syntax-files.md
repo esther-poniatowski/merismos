@@ -41,12 +41,14 @@ A section of a Markdown syntax describes one construct, and a section set to `nu
 | `thematic_breaks.characters`, `thematic_breaks.minimum_count` | characters of a thematic break, and the fewest of them | `-`, `*`, `_`; 3 |
 | `setext_underlines` | characters whose run under a paragraph closes it | `=`, `-` |
 | `code_span` | character whose runs delimit a code span, or `null` | `` ` `` |
+| `code_span_shorter_closing` | whether, when no run of the width of the opening run follows it, the first narrower run closes a code span, the excess characters of the opening run staying literal | true |
+| `code_span_over_links` | whether a code span crossing the text of a link prevails over the link, as in CommonMark | false |
 | `math.display`, `math.inline` | delimiters of display and inline mathematics, each possibly `null` | `$$`, `$` |
 | `math.inline_spans_lines` | whether inline mathematics may cross a line break | false |
-| `math.display_spans_blank_lines` | whether a blank line inside display mathematics keeps it open | false |
+| `math.display_spans_blank_lines` | whether a blank line inside display mathematics keeps it open; when true, a formula opens only when a later display delimiter of the source may close it | true |
 | `links.markdown` | `text_opening`, `text_closing`, `destination_opening`, `destination_closing`, `destination_brackets` (two characters) and `title_delimiters` (pairs of characters) of a Markdown link, or `null` | `[`, `]`, `(`, `)`; `<` and `>`; `""`, `''` and `()` |
 | `links.embeds_in_text` | whether the text of a Markdown link may hold embeds | true |
-| `links.wikilink` | `opening`, `closing` and `alias_separator` of a wikilink, and the optional `excluded`, the characters that its destination cannot hold; or `null` | `[[`, `]]`, `|`; `[]` |
+| `links.wikilink` | `opening`, `closing` and `alias_separator` of a wikilink, `escaped_separator`, whether an escaped separator still separates the alias, and the optional `excluded`, the characters that its destination cannot hold; or `null` | `[[`, `]]`, `|`; true; none |
 | `links.embed_prefix` | prefix turning a link into an embed, or `null` | `!` |
 | `escape.character`, `escape.escapable` | escape character, and the characters it escapes | `\`, the ASCII punctuation |
 

@@ -7,7 +7,7 @@ contract: merismos:span-kinds@1
 cases:
 - id: frontmatter-at-start
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: |
     ---
     tags: [a]
@@ -22,7 +22,7 @@ cases:
     content: [24, 25]
 - id: frontmatter-not-at-start
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A fence after the first line opens no frontmatter.
   text: |2
 
@@ -33,7 +33,7 @@ cases:
   regions: []
 - id: fenced-code-info-string
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: No region is recognized inside fenced code.
   text: |
     ```python
@@ -47,7 +47,7 @@ cases:
       info: python
 - id: fenced-code-unclosed
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: An unclosed fence runs to the end of its container.
   text: |
     ~~~
@@ -60,7 +60,7 @@ cases:
       info: ''
 - id: fenced-code-in-list-item
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: The indentation of the list item is a gap of the content.
   text: |
     - item
@@ -76,7 +76,7 @@ cases:
       info: ''
 - id: inline-code-double-backticks
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: Use ``a `$b$` c`` here.
   regions:
   - kind: inline-code
@@ -84,7 +84,7 @@ cases:
     content: [6, 15]
 - id: inline-code-before-math
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: '`$a$` and $b$'
   regions:
   - kind: inline-code
@@ -95,7 +95,7 @@ cases:
     content: [11, 12]
 - id: inline-math-basic
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: Let $x_i$ vary.
   regions:
   - kind: inline-math
@@ -103,13 +103,13 @@ cases:
     content: [5, 8]
 - id: inline-math-space-after-opening
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A dollar followed by a space opens nothing, and the last dollar finds no closing one.
   text: Costs $ 5 and $6.
   regions: []
 - id: inline-math-escaped-dollar
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: Price \$5 and $y$.
   regions:
   - kind: inline-math
@@ -117,7 +117,7 @@ cases:
     content: [15, 16]
 - id: display-math-lines
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: |
     $$
     a + b
@@ -128,7 +128,7 @@ cases:
     content: [2, 9]
 - id: display-math-in-paragraph
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: Thus $$a=b$$ holds.
   regions:
   - kind: display-math
@@ -136,7 +136,7 @@ cases:
     content: [7, 10]
 - id: heading-with-math-and-wikilink
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: |
     ## Rate $r$ in [[notes|Notes]]
   regions:
@@ -162,14 +162,14 @@ cases:
     content: [23, 28]
 - id: heading-without-space
   source: markdown
-  observed: null
-  note: A number sign followed by a letter opens a tag, not a heading.
+  observed: 1.15.0
+  note: A `#` followed by a letter opens a tag, not a heading.
   text: |
     #tag here
   regions: []
 - id: markdown-link-with-title
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: The title belongs to the link, not to its destination.
   text: See [the rule](docs/rule.md "Rule").
   regions:
@@ -187,7 +187,7 @@ cases:
     content: [15, 27]
 - id: markdown-link-angle-destination
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: '[a](<my file.md>)'
   regions:
   - kind: link
@@ -204,7 +204,7 @@ cases:
     content: [5, 15]
 - id: equal-ranges-enclosing-first
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A region sharing its range with the region enclosing it follows that region.
   text: '[$x$](d)'
   regions:
@@ -225,7 +225,7 @@ cases:
     content: [6, 7]
 - id: wikilink-block-anchor
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A wikilink without an alias has no link text.
   text: '[[note#^anchor]]'
   regions:
@@ -240,25 +240,22 @@ cases:
     content: [2, 14]
 - id: wikilink-destination-with-bracket
   source: markdown
-  observed: null
-  note: A wikilink destination holds no bracket, so the brackets open a Markdown link instead.
+  observed: 1.15.0
+  note: A wikilink runs to its first closing, so its destination may hold brackets.
   text: '[[a](b)]]'
   regions:
   - kind: link
-    range: [1, 7]
+    range: [0, 9]
     content: null
     attributes:
-      syntax: markdown
+      syntax: wiki
       embed: false
-  - kind: link-text
-    range: [2, 3]
-    content: [2, 3]
   - kind: link-destination
-    range: [5, 6]
-    content: [5, 6]
+    range: [2, 7]
+    content: [2, 7]
 - id: wikilink-embed
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: '![[figure.png]]'
   regions:
   - kind: link
@@ -272,7 +269,7 @@ cases:
     content: [3, 13]
 - id: callout-with-display-math
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: The markers of the quotation that the mathematics crosses are gaps of its content.
   text: |
     > [!NOTE] Title
@@ -293,7 +290,7 @@ cases:
     gaps: [[21, 23], [25, 27]]
 - id: nested-quotation
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: |
     > a
     > > b
@@ -313,7 +310,7 @@ cases:
       fold: null
 - id: frontmatter-unclosed
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A frontmatter fence never closed opens no frontmatter.
   text: |
     ---
@@ -321,7 +318,7 @@ cases:
   regions: []
 - id: indented-code
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: The indentation of the later lines is a gap of the content.
   text: |
     Text
@@ -335,7 +332,7 @@ cases:
     gaps: [[14, 18]]
 - id: indented-line-continues-paragraph
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: An indented line continues an open paragraph instead of opening code.
   text: |
     Text
@@ -346,7 +343,7 @@ cases:
     content: [10, 11]
 - id: heading-closing-run
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: The closing run of markers belongs to no content.
   text: |
     # Title ##
@@ -358,7 +355,7 @@ cases:
       level: 1
 - id: lazy-continuation
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A line without marker continues the paragraph of the quotation; inline mathematics stops at the
     line break.
   text: |
@@ -373,25 +370,34 @@ cases:
       fold: null
 - id: inline-math-closing-after-space
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A dollar preceded by a space closes nothing, and the search goes on.
   text: $a $b$
   regions:
   - kind: inline-math
     range: [0, 6]
     content: [1, 5]
-- id: code-span-before-link
+- id: link-crossing-code-span
   source: markdown
-  observed: null
-  note: A code span takes precedence over a link.
+  observed: 1.15.0
+  note: A link prevails over a code span crossing its text.
   text: '[a`](b)`'
   regions:
-  - kind: inline-code
-    range: [2, 8]
-    content: [3, 7]
+  - kind: link
+    range: [0, 7]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: false
+  - kind: link-text
+    range: [1, 3]
+    content: [1, 3]
+  - kind: link-destination
+    range: [5, 6]
+    content: [5, 6]
 - id: markdown-embed
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: '![alt](img.png)'
   regions:
   - kind: link
@@ -408,7 +414,7 @@ cases:
     content: [7, 14]
 - id: thematic-break-before-list
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A line of separated dashes is a thematic break, not a list item.
   text: |
     - - -
@@ -419,7 +425,7 @@ cases:
     content: [7, 8]
 - id: ordered-list-continuation
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: |
     1. $a$
        $b$
@@ -432,7 +438,7 @@ cases:
     content: [11, 12]
 - id: display-math-holds-list-marker
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A line inside display mathematics opens no block, whatever marker it starts with.
   text: |
     $$
@@ -445,7 +451,7 @@ cases:
     content: [2, 9]
 - id: display-math-holds-quotation-marker
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A line inside display mathematics opens no block, whatever marker it starts with.
   text: |
     $$
@@ -458,7 +464,7 @@ cases:
     content: [2, 9]
 - id: display-math-holds-heading-marker
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A line inside display mathematics opens no block, whatever marker it starts with.
   text: |
     $$
@@ -469,24 +475,27 @@ cases:
   - kind: display-math
     range: [0, 11]
     content: [2, 9]
-- id: unmatched-backtick-run
+- id: backtick-run-closed-by-narrower-run
   source: markdown
-  observed: null
-  note: A backtick run without a closing run of its width is literal as a whole.
+  observed: 1.15.0
+  note: A narrower run closes a code span, the excess backticks of the opening run staying literal.
   text: '``foo`bar` baz'
   regions:
   - kind: inline-code
-    range: [5, 10]
-    content: [6, 9]
-- id: unmatched-backtick-run-alone
+    range: [1, 6]
+    content: [2, 5]
+- id: backtick-run-closed-by-narrower-run-alone
   source: markdown
-  observed: null
-  note: No run of the width of the opening run closes it.
+  observed: 1.15.0
+  note: A narrower run closes a code span, the excess backticks of the opening run staying literal.
   text: '``a` b'
-  regions: []
+  regions:
+  - kind: inline-code
+    range: [1, 4]
+    content: [2, 3]
 - id: image-inside-link-text
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: The text of a link may hold an embed, as a badge does.
   text: '[![img](a.png)](b.md)'
   regions:
@@ -516,7 +525,7 @@ cases:
     content: [16, 20]
 - id: escaped-destination-parenthesis
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: An escaped parenthesis belongs to the destination.
   text: '[a](b\)c)'
   regions:
@@ -534,8 +543,8 @@ cases:
     content: [4, 8]
 - id: escaped-wikilink-separator
   source: markdown
-  observed: null
-  note: An escaped separator, as a table requires it, separates no alias.
+  observed: 1.15.0
+  note: An escaped separator separates the alias too, its escape left out of the destination.
   text: '[[a\|b]]'
   regions:
   - kind: link
@@ -545,11 +554,14 @@ cases:
       syntax: wiki
       embed: false
   - kind: link-destination
-    range: [2, 6]
-    content: [2, 6]
+    range: [2, 3]
+    content: [2, 3]
+  - kind: link-text
+    range: [5, 6]
+    content: [5, 6]
 - id: callout-fold-sign
   source: markdown
-  observed: null
+  observed: 1.15.0
   text: |
     > [!tip]- T
     > x
@@ -561,3 +573,163 @@ cases:
     attributes:
       callout: tip
       fold: '-'
+- id: display-math-blank-line
+  source: markdown
+  observed: 1.15.0
+  note: A blank line inside display mathematics keeps it open.
+  text: |
+    $$
+    a
+
+    b
+    $$
+  regions:
+  - kind: display-math
+    range: [0, 10]
+    content: [2, 8]
+- id: display-math-blank-lines-around
+  source: markdown
+  observed: 1.15.0
+  note: Blank lines after the opening and before the closing delimiter keep the formula open.
+  text: |
+    Text.
+
+    $$
+
+    K_{\mathrm{out}} = 1
+
+    $$
+
+    More text.
+  regions:
+  - kind: display-math
+    range: [7, 35]
+    content: [9, 33]
+- id: backtick-closing-run-wider
+  source: markdown
+  observed: 1.15.0
+  note: A run wider than the opening run closes no code span.
+  text: |
+    `a`` b
+  regions: []
+- id: backtick-three-then-one
+  source: markdown
+  observed: 1.15.0
+  note: A single backtick closes a run of three, the two first backticks staying literal.
+  text: |
+    x ```a` b
+  regions:
+  - kind: inline-code
+    range: [4, 7]
+    content: [5, 6]
+- id: wikilink-holding-markdown-links
+  source: markdown
+  observed: 1.15.0
+  note: Markdown links inside a wikilink are part of its destination.
+  text: |
+    [[s](v.md), [o](w.md)]]
+  regions:
+  - kind: link
+    range: [0, 23]
+    content: null
+    attributes:
+      syntax: wiki
+      embed: false
+  - kind: link-destination
+    range: [2, 21]
+    content: [2, 21]
+- id: escaped-separator-in-table
+  source: markdown
+  observed: 1.15.0
+  note: In a table cell, the escaped separator separates the alias.
+  text: |
+    | x |
+    | - |
+    | [[a\|b]] |
+  regions:
+  - kind: link
+    range: [14, 22]
+    content: null
+    attributes:
+      syntax: wiki
+      embed: false
+  - kind: link-destination
+    range: [16, 17]
+    content: [16, 17]
+  - kind: link-text
+    range: [19, 20]
+    content: [19, 20]
+- id: link-holding-code-span
+  source: markdown
+  observed: 1.15.0
+  note: A link prevails over a code span opening in its text and closing after it.
+  text: |
+    [a `b](c)` d
+  regions:
+  - kind: link
+    range: [0, 9]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: false
+  - kind: link-text
+    range: [1, 5]
+    content: [1, 5]
+  - kind: link-destination
+    range: [7, 8]
+    content: [7, 8]
+- id: backtick-skips-wider-run
+  source: markdown
+  observed: null
+  note: A wider run neither closes a code span nor stops the search for its closing run.
+  text: |
+    `a`` b` c
+  regions:
+  - kind: inline-code
+    range: [0, 7]
+    content: [1, 6]
+- id: code-span-before-crossing-link
+  source: markdown
+  observed: null
+  note: A code span opened before a link prevails over the link crossing it.
+  text: |
+    `a [b` c](d)
+  regions:
+  - kind: inline-code
+    range: [0, 6]
+    content: [1, 5]
+- id: bracket-in-code-in-link-text
+  source: markdown
+  observed: null
+  note: A bracket inside a code span closes the link text, since the link opened first.
+  text: |
+    [a `]` b](c)
+  regions:
+  - kind: inline-code
+    range: [3, 6]
+    content: [4, 5]
+- id: display-math-unclosed
+  source: markdown
+  observed: null
+  note: An unclosed display delimiter leaves the following blocks to themselves.
+  text: |
+    $$
+    a
+
+    # H
+  regions:
+  - kind: heading
+    range: [6, 9]
+    content: [8, 9]
+    attributes:
+      level: 1
+- id: code-span-holding-link
+  source: markdown
+  observed: null
+  note: A link inside a code span is code.
+  text: |
+    `[a](b)`
+  regions:
+  - kind: inline-code
+    range: [0, 8]
+    content: [1, 7]

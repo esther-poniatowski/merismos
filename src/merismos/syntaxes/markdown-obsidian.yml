@@ -50,13 +50,19 @@ thematic_breaks:
 setext_underlines: ["=", "-"]
 
 code_span: "`"
+# Observed in Obsidian 1.15.0: a run of the width of the opening run closes a code span first, as in
+# ``a `b` c``; when none follows, as in ``foo`bar`, the single backtick after foo closes the span
+# opened by the second backtick of the run, and the first backtick stays literal.
+code_span_shorter_closing: true
+# Observed in Obsidian 1.15.0: in [a`](b)`, the link prevails over the code span crossing its text.
+code_span_over_links: false
 
 math:
   display: "$$"
   inline: "$"
   inline_spans_lines: false
-  # Whether a blank line inside display mathematics keeps it open; to be observed in Obsidian.
-  display_spans_blank_lines: false
+  # Whether a blank line inside display mathematics keeps it open, as observed in Obsidian 1.15.0.
+  display_spans_blank_lines: true
 
 links:
   markdown:
@@ -73,8 +79,8 @@ links:
     opening: "[["
     closing: "]]"
     alias_separator: "|"
-    # Obsidian links no file whose name holds a bracket, so `[[a](b)]]` holds no wikilink.
-    excluded: "[]"
+    # Observed in Obsidian 1.15.0: [[a\|b]] displays b and links to a, in a table or not.
+    escaped_separator: true
   embed_prefix: "!"
 
 escape:

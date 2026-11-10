@@ -117,12 +117,16 @@ class WikilinkSyntax:
     excluded : str
         Characters that a destination cannot hold, so that an opening followed by one of them
         before its closing opens no wikilink.
+    escaped_separator : bool
+        Whether an escaped alias separator still separates the alias, its escape character left
+        out of the destination, as a table cell requires the escape.
     """
 
     opening: str
     closing: str
     alias_separator: str
     excluded: str = ""
+    escaped_separator: bool = False
 
 
 @dataclass(frozen=True)
@@ -187,6 +191,12 @@ class MarkdownSyntax:  # pylint: disable=too-many-instance-attributes
         Syntax of each construct, None when the dialect disables it.
     code_span : str | None
         Character whose runs delimit a code span.
+    code_span_shorter_closing : bool
+        Whether, when no run of the width of the opening run follows it, the first narrower run
+        closes a code span, the excess characters of the opening run staying literal.
+    code_span_over_links : bool
+        Whether a code span crossing the text of a link prevails over the link, as in CommonMark;
+        otherwise the construct opened first prevails.
     setext_underlines : tuple[str, ...]
         Characters whose run under a paragraph closes it as a heading of another style.
     """
@@ -203,6 +213,8 @@ class MarkdownSyntax:  # pylint: disable=too-many-instance-attributes
     thematic_breaks: ThematicBreakSyntax | None
     setext_underlines: tuple[str, ...]
     code_span: str | None
+    code_span_shorter_closing: bool
+    code_span_over_links: bool
     math: MathSyntax | None
     links: LinkSyntax | None
     escape: EscapeSyntax | None
@@ -295,6 +307,7 @@ def _links(fields: Fields | None, name: str) -> LinkSyntax | None:
             closing=wiki_fields.string("closing"),
             alias_separator=wiki_fields.string("alias_separator"),
             excluded=wiki_fields.optional_string("excluded") or "",
+            escaped_separator=wiki_fields.boolean("escaped_separator"),
         )
         wiki_fields.finish()
     links = LinkSyntax(
@@ -435,6 +448,8 @@ def parse_markdown_syntax(name: str, fields: Fields) -> MarkdownSyntax:
         thematic_breaks=_thematic_breaks(fields.section("thematic_breaks")),
         setext_underlines=fields.characters("setext_underlines"),
         code_span=fields.character("code_span"),
+        code_span_shorter_closing=fields.boolean("code_span_shorter_closing"),
+        code_span_over_links=fields.boolean("code_span_over_links"),
         math=_math(fields.section("math")),
         links=_links(fields.section("links"), name),
         escape=_escape(fields.section("escape"), name),

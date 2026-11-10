@@ -88,21 +88,49 @@ def test_wrong_version_is_rejected() -> None:
         read_syntax_document("syntax_version: 2\nsource_type: markdown\nname: x\n", "inline")
 
 
-def test_wikilink_without_excluded_characters_admits_a_bracket(tmp_path: Path) -> None:
+def _variant(tmp_path: Path, change) -> Path:  # type: ignore[no-untyped-def]
+    """Write the packaged Obsidian syntax with one change applied to its data."""
     import yaml
 
     data = yaml.safe_load(_syntax_file(tmp_path, {}).read_text(encoding="utf-8"))
-    del data["links"]["wikilink"]["excluded"]
-    path = tmp_path / "plain.yml"
+    change(data)
+    path = tmp_path / "variant.yml"
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    return path
+
+
+def test_excluded_bracket_opens_no_wikilink(tmp_path: Path) -> None:
+    path = _variant(tmp_path, lambda data: data["links"]["wikilink"].update(excluded="[]"))
     segmentation = segment("[[a](b)]]", "markdown", path)
-    destinations = [segmentation.text(r.content) for r in segmentation.select(["link-destination"])]
-    assert destinations == ["a](b)"]
-
-
-def test_excluded_bracket_opens_no_wikilink() -> None:
-    segmentation = segment("[[a](b)]]", "markdown")
     assert [r.attributes.get("syntax") for r in segmentation.select(["link"])] == ["markdown"]
+
+
+def test_escaped_separator_separates_no_alias_unless_admitted(tmp_path: Path) -> None:
+    path = _variant(
+        tmp_path, lambda data: data["links"]["wikilink"].update(escaped_separator=False)
+    )
+    segmentation = segment("[[a\\|b]]", "markdown", path)
+    destinations = [segmentation.text(r.content) for r in segmentation.select(["link-destination"])]
+    assert destinations == ["a\\|b"]
+
+
+def test_narrower_run_closes_no_code_span_unless_admitted(tmp_path: Path) -> None:
+    path = _variant(tmp_path, lambda data: data.update(code_span_shorter_closing=False))
+    segmentation = segment("``foo`bar` baz", "markdown", path)
+    assert [segmentation.text(r.content) for r in segmentation.select(["inline-code"])] == ["bar"]
+
+
+def test_code_span_prevails_over_a_crossing_link_when_declared(tmp_path: Path) -> None:
+    path = _variant(tmp_path, lambda data: data.update(code_span_over_links=True))
+    segmentation = segment("[a`](b)`", "markdown", path)
+    assert [r.kind for r in segmentation.regions] == ["inline-code"]
+
+
+def test_unclosed_display_delimiter_spans_blank_lines_only_when_closed(tmp_path: Path) -> None:
+    segmentation = segment("$$\na\n\n# H\n\n$$\n", "markdown")
+    assert [r.kind for r in segmentation.regions] == ["display-math"]
+    segmentation = segment("$$\na\n\n# H\n", "markdown")
+    assert [r.kind for r in segmentation.regions] == ["heading"]
 
 
 def test_null_section_disables_its_construct(tmp_path: Path) -> None:
