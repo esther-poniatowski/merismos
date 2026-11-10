@@ -42,10 +42,11 @@ A section of a Markdown syntax describes one construct, and a section set to `nu
 | `setext_underlines` | characters whose run under a paragraph closes it | `=`, `-` |
 | `code_span` | character whose runs delimit a code span, or `null` | `` ` `` |
 | `code_span_shorter_closing` | whether, when no run of the width of the opening run follows it, the first narrower run closes a code span, the excess characters of the opening run staying literal | true |
-| `code_span_over_links` | whether a code span crossing the text of a link prevails over the link, as in CommonMark | false |
+| `code_span_over_links` | whether a code span crossing the text of a link prevails over the link, as in CommonMark; a code span inside the text holds its brackets either way | false |
 | `math.display`, `math.inline` | delimiters of display and inline mathematics, each possibly `null` | `$$`, `$` |
 | `math.inline_spans_lines` | whether inline mathematics may cross a line break | false |
-| `math.display_spans_blank_lines` | whether a blank line inside display mathematics keeps it open; when true, a formula opens only when a later display delimiter of the source may close it | true |
+| `math.display_spans_blank_lines` | whether a blank line inside display mathematics keeps it open | true |
+| `math.display_unclosed_runs_to_end` | whether an unclosed display delimiter opens a formula running to the end of its container; when false, the delimiter is literal | true |
 | `links.markdown` | `text_opening`, `text_closing`, `destination_opening`, `destination_closing`, `destination_brackets` (two characters) and `title_delimiters` (pairs of characters) of a Markdown link, or `null` | `[`, `]`, `(`, `)`; `<` and `>`; `""`, `''` and `()` |
 | `links.embeds_in_text` | whether the text of a Markdown link may hold embeds | true |
 | `links.wikilink` | `opening`, `closing` and `alias_separator` of a wikilink, `escaped_separator`, whether an escaped separator still separates the alias, and the optional `excluded`, the characters that its destination cannot hold; or `null` | `[[`, `]]`, `|`; true; none |

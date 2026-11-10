@@ -3,8 +3,10 @@ Inline scanner: code spans, mathematics and links inside the text of a paragraph
 
 The scanner reads one run of text, its container prefixes removed, from left to right. A
 construct opened first takes precedence over the constructs opening inside it, and no construct
-opens inside an opaque one. A syntax may state one exception, as CommonMark does: a code span
-takes precedence over a link, so a closing bracket inside a code span closes no link text.
+opens inside an opaque one. A closing bracket inside a code span closes no link text, as in
+CommonMark. A syntax may let a link prevail over a code span crossing its text, as Obsidian does:
+when the brackets matched around the code spans form no link, the brackets matched without them
+are tried.
 
 A code span closes at the next run of its delimiter as wide as its opening run. A syntax may also
 let the first narrower run close it when no run as wide follows, the excess delimiters of the
@@ -124,8 +126,16 @@ class RunIndex:  # pylint: disable=too-many-instance-attributes
         )
         self._shorter_closing = syntax.code_span_shorter_closing
         markdown = links.markdown if links is not None else None
-        prevailing = syntax.code_span if syntax.code_span_over_links else None
-        self.brackets = self._match_brackets(markdown, prevailing) if markdown is not None else {}
+        self.brackets = (
+            self._match_brackets(markdown, syntax.code_span) if markdown is not None else {}
+        )
+        #: Brackets matched through the code spans, tried when a link prevails over a code span
+        #: crossing its text.
+        self.crossing_brackets = (
+            self._match_brackets(markdown, None)
+            if markdown is not None and not syntax.code_span_over_links
+            else {}
+        )
 
     def _index_runs(self, delimiter: str) -> None:
         """Record the start of each maximal run of the code-span delimiter, by width."""
@@ -360,7 +370,11 @@ class _Scan:
         width = len(math.display)
         closing = next_occurrence(self._index.display, position + width, end, width)
         if closing is None:
-            return None
+            if not math.display_unclosed_runs_to_end:
+                return None
+            # An unclosed formula runs to the end of the run, whose paragraph it keeps open.
+            self.unclosed_display = True
+            return InlineNode(kinds.DISPLAY_MATH, Span(position, end), Span(position + width, end))
         return InlineNode(
             kinds.DISPLAY_MATH, Span(position, closing + width), Span(position + width, closing)
         )
@@ -461,9 +475,21 @@ class _Scan:
         opening = self._opening(position, syntax.text_opening, links)
         if opening is None or not self._admitted(mode, opening != position):
             return None
-        bracket = self._index.brackets.get(opening)
+        for brackets in (self._index.brackets, self._index.crossing_brackets):
+            node = self._link_text_at(position, opening, brackets.get(opening), end)
+            if node is not None:
+                return node
+        return None
+
+    def _link_text_at(
+        self, position: int, opening: int, bracket: int | None, end: int
+    ) -> InlineNode | None:
+        """Recognize a Markdown link whose text closes at `bracket`, None when none closes there."""
+        links = self._syntax.links
+        syntax = links.markdown if links is not None else None
         if (
-            bracket is None
+            syntax is None
+            or bracket is None
             or bracket + 1 >= end
             or self._text[bracket + 1] != syntax.destination_opening
         ):

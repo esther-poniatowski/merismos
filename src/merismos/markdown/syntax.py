@@ -105,6 +105,7 @@ class MathSyntax:
     inline: str | None
     inline_spans_lines: bool
     display_spans_blank_lines: bool
+    display_unclosed_runs_to_end: bool
 
 
 @dataclass(frozen=True)
@@ -196,7 +197,7 @@ class MarkdownSyntax:  # pylint: disable=too-many-instance-attributes
         closes a code span, the excess characters of the opening run staying literal.
     code_span_over_links : bool
         Whether a code span crossing the text of a link prevails over the link, as in CommonMark;
-        otherwise the construct opened first prevails.
+        otherwise the link prevails. A code span inside the text holds its brackets either way.
     setext_underlines : tuple[str, ...]
         Characters whose run under a paragraph closes it as a heading of another style.
     """
@@ -266,6 +267,7 @@ def _math(fields: Fields | None) -> MathSyntax | None:
         inline=fields.optional_string("inline"),
         inline_spans_lines=fields.boolean("inline_spans_lines"),
         display_spans_blank_lines=fields.boolean("display_spans_blank_lines"),
+        display_unclosed_runs_to_end=fields.boolean("display_unclosed_runs_to_end"),
     )
     fields.finish()
     return math

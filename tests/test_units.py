@@ -126,10 +126,11 @@ def test_code_span_prevails_over_a_crossing_link_when_declared(tmp_path: Path) -
     assert [r.kind for r in segmentation.regions] == ["inline-code"]
 
 
-def test_unclosed_display_delimiter_spans_blank_lines_only_when_closed(tmp_path: Path) -> None:
-    segmentation = segment("$$\na\n\n# H\n\n$$\n", "markdown")
-    assert [r.kind for r in segmentation.regions] == ["display-math"]
+def test_unclosed_display_delimiter_runs_to_the_end_only_when_declared(tmp_path: Path) -> None:
     segmentation = segment("$$\na\n\n# H\n", "markdown")
+    assert [r.kind for r in segmentation.regions] == ["display-math"]
+    path = _variant(tmp_path, lambda data: data["math"].update(display_unclosed_runs_to_end=False))
+    segmentation = segment("$$\na\n\n# H\n", "markdown", path)
     assert [r.kind for r in segmentation.regions] == ["heading"]
 
 
@@ -148,6 +149,7 @@ def test_custom_delimiter_needs_no_code(tmp_path: Path) -> None:
                 "inline": "%%",
                 "inline_spans_lines": False,
                 "display_spans_blank_lines": False,
+                "display_unclosed_runs_to_end": False,
             }
         },
     )
@@ -161,6 +163,7 @@ def test_inline_math_may_span_lines_when_the_syntax_says_so(tmp_path: Path) -> N
         "inline": "$",
         "inline_spans_lines": True,
         "display_spans_blank_lines": False,
+        "display_unclosed_runs_to_end": False,
     }
     path = _syntax_file(tmp_path, {"math": math})
     regions = default_registry().segmenter("markdown", path).segment("$a\nb$")

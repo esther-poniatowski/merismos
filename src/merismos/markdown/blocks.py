@@ -515,19 +515,17 @@ class _Scan:  # pylint: disable=too-many-instance-attributes
             if closing is None:
                 return
             text = text[closing:]
-        paragraph.in_display = self.inline.opens_display_math(text) and self._closed_later(
-            segment.end
-        )
+        paragraph.in_display = self.inline.opens_display_math(text) and self._may_close(segment.end)
 
-    def _closed_later(self, position: int) -> bool:
-        """Whether a display delimiter left open at `position` may continue the paragraph.
+    def _may_close(self, position: int) -> bool:
+        """Whether a display delimiter left open at `position` continues the paragraph.
 
-        A formula spanning blank lines continues only when a later display delimiter of the
-        source may close it, so that an unclosed delimiter leaves the rest of the source to its
-        blocks.
+        Where an unclosed formula runs to the end of its container, every open delimiter
+        continues it. Otherwise, an unclosed delimiter is literal, so it continues the paragraph
+        only when a later display delimiter of the source may close it.
         """
         math = self.syntax.math
-        if math is None or math.display is None or not math.display_spans_blank_lines:
+        if math is None or math.display is None or math.display_unclosed_runs_to_end:
             return True
         return self.source.find(math.display, position) != -1
 

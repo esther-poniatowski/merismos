@@ -10,15 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - The packaged Obsidian syntax follows the reading observed in Obsidian 1.15.0, and every
-  Markdown case records that observation. Five readings change:
+  Markdown case records that observation. Six readings change:
   - a wikilink runs to its first closing, its destination possibly holding brackets;
   - an escaped alias separator still separates the alias of a wikilink;
   - a narrower run closes a code span when no run of the opening width follows;
   - a link prevails over a code span crossing its text;
-  - a blank line keeps display mathematics open, when a later delimiter may close it.
+  - a code span inside the text of a link holds its brackets;
+  - a blank line keeps display mathematics open, and an unclosed display delimiter opens a
+    formula running to the end of its container.
 
 ### Added
 
-- The syntax keys `code_span_shorter_closing`, `code_span_over_links` and
-  `links.wikilink.escaped_separator`, which keep the CommonMark readings available.
-- Twelve Markdown cases, five of them awaiting observation.
+- The syntax keys `code_span_shorter_closing`, `code_span_over_links`,
+  `math.display_unclosed_runs_to_end` and `links.wikilink.escaped_separator`, which keep the
+  CommonMark readings available.
+- Thirteen Markdown cases, one of them awaiting observation.

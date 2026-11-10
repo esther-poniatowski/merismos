@@ -680,7 +680,7 @@ cases:
     content: [7, 8]
 - id: backtick-skips-wider-run
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A wider run neither closes a code span nor stops the search for its closing run.
   text: |
     `a`` b` c
@@ -690,7 +690,7 @@ cases:
     content: [1, 6]
 - id: code-span-before-crossing-link
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A code span opened before a link prevails over the link crossing it.
   text: |
     `a [b` c](d)
@@ -700,32 +700,43 @@ cases:
     content: [1, 5]
 - id: bracket-in-code-in-link-text
   source: markdown
-  observed: null
-  note: A bracket inside a code span closes the link text, since the link opened first.
+  observed: 1.15.0
+  note: A code span inside the text of a link holds its bracket, which closes no link text.
   text: |
     [a `]` b](c)
   regions:
+  - kind: link
+    range: [0, 12]
+    content: null
+    attributes:
+      syntax: markdown
+      embed: false
+  - kind: link-text
+    range: [1, 8]
+    content: [1, 8]
   - kind: inline-code
     range: [3, 6]
     content: [4, 5]
+  - kind: link-destination
+    range: [10, 11]
+    content: [10, 11]
 - id: display-math-unclosed
   source: markdown
-  observed: null
-  note: An unclosed display delimiter leaves the following blocks to themselves.
+  observed: 1.15.0
+  note: An unclosed display delimiter opens a formula running to the end of its container, blank lines
+    and block markers included.
   text: |
     $$
     a
 
     # H
   regions:
-  - kind: heading
-    range: [6, 9]
-    content: [8, 9]
-    attributes:
-      level: 1
+  - kind: display-math
+    range: [0, 9]
+    content: [2, 9]
 - id: code-span-holding-link
   source: markdown
-  observed: null
+  observed: 1.15.0
   note: A link inside a code span is code.
   text: |
     `[a](b)`
@@ -733,3 +744,15 @@ cases:
   - kind: inline-code
     range: [0, 8]
     content: [1, 7]
+- id: display-math-unclosed-in-paragraph
+  source: markdown
+  observed: null
+  note: An unclosed display delimiter inside a sentence opens a formula running to the end of its container.
+  text: |
+    Cost $$5 here.
+
+    # H
+  regions:
+  - kind: display-math
+    range: [5, 19]
+    content: [7, 19]

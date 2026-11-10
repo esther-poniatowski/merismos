@@ -54,7 +54,8 @@ code_span: "`"
 # ``a `b` c``; when none follows, as in ``foo`bar`, the single backtick after foo closes the span
 # opened by the second backtick of the run, and the first backtick stays literal.
 code_span_shorter_closing: true
-# Observed in Obsidian 1.15.0: in [a`](b)`, the link prevails over the code span crossing its text.
+# Observed in Obsidian 1.15.0: in [a`](b)`, the link prevails over the code span crossing its text,
+# whereas in [a `]` b](c), the code span inside the text holds its bracket.
 code_span_over_links: false
 
 math:
@@ -63,6 +64,9 @@ math:
   inline_spans_lines: false
   # Whether a blank line inside display mathematics keeps it open, as observed in Obsidian 1.15.0.
   display_spans_blank_lines: true
+  # Whether an unclosed display delimiter opens a formula running to the end of its container, as
+  # observed in Obsidian 1.15.0 for a delimiter alone on its line.
+  display_unclosed_runs_to_end: true
 
 links:
   markdown:
