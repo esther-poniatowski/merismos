@@ -35,11 +35,10 @@ version_toml = ["pyproject.toml:project.version"]
 version_variables = ["CITATION.cff:version"]
 
 # Release Assets
-assets = [
-    "dist/*.whl",           # Python wheel files
-    "dist/*.tar.gz",        # Source distributions
-    "docs/*.pdf",           # Documentation PDFs
-]
+# The first release of a version 0.0.0 is 0.1.0: a version below 1.0.0 is admitted, and a breaking
+# change below 1.0.0 raises the minor version.
+allow_zero_version = true
+major_on_zero = false
 
 # --- Branch Groups --------------------------------------------------------------------------------
 
@@ -85,7 +84,8 @@ output_format = "md"
 type = "github"
 env = "GH_TOKEN"
 
+# No distribution is built by the Release workflow: the conda package is built and published by the
+# workflow Build and Deploy, which the Release workflow starts.
 [semantic_release.publish]
 
-dist_glob_patterns = ["dist/*"]
-upload_to_vcs_release = true
+upload_to_vcs_release = false
